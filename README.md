@@ -15,7 +15,7 @@ Start here:
 | [docs/RUNBOOK.md](docs/RUNBOOK.md) | every step from a clean terminal, with expected outputs |
 | [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md) | concepts, methods, results, every figure explained |
 | [docs/RESULTS_TABLES.md](docs/RESULTS_TABLES.md) | generated tables (`python3 tools/make_tables.py`) |
-| [docs/Q2_ASSESSMENT.md](docs/Q2_ASSESSMENT.md) | publication-readiness review |
+
 
 Quick check (2 min):
 
