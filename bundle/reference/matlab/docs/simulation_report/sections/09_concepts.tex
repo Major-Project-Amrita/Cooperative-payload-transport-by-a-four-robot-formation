@@ -1,0 +1,333 @@
+% 09_concepts.tex -- self-contained "concept school": every idea the reader
+% needs to understand Section~\ref{sec:experiments}, taught from zero with
+% this project's own files as the worked examples. Video + paper references
+% live in the bibliography at the end of this file.
+
+\section{Concept school: the ideas behind the experiments}
+\label{sec:concepts}
+
+This section teaches, from zero, each idea the experimental evaluation
+(Section~\ref{sec:experiments}) rests on --- reactive obstacle avoidance,
+histogram steering, reasoning under sensor uncertainty, Monte Carlo
+experiment grids, and the ToF-vs-LiDAR sensor trade-off. Each subsection ends
+with pointers for going deeper: the paper that introduced the idea, a
+textbook chapter, and at least one video lecture. The worked examples are
+always this project's own files, so every concept can be seen running in
+code you already have.
+
+\begin{keybox}{Concept map --- where each idea lives in this project}
+\footnotesize
+\begin{tabular}{@{}p{2.9cm}p{4.6cm}p{2.6cm}p{3.1cm}@{}}
+\toprule
+\textbf{Concept} & \textbf{Implemented in} & \textbf{Tested by} &\textbf{Taught here} \\
+\midrule
+Potential fields (APF) & \code{apf\_force.m} / \code{vfh.py} reflex & E1 (local minimum) & \S\ref{sec:concept-apf} \\
+Histogram (VFH) & \code{pvfh\_scan.m} + \code{steering\_dispatch.m} / \code{vfh.py} & E1--E3 baselines & \S\ref{sec:concept-vfh} \\
+Sensor noise model & \code{sensor\_noise.m} / \code{vfh.py::sensor\_noise} & E2, E3, E6 & \S\ref{sec:concept-unc} \\
+Probabilistic blockage & \code{pvfh\_prob.m} / \code{vfh.py::pvfh\_prob} & E2 (headline) & \S\ref{sec:concept-unc} \\
+Monte Carlo grid & \code{run\_paper\_experiments.m} & E1--E14 & \S\ref{sec:concept-mc} \\
+Paired seeds & same PRNG seed per run & E2, E5, E7 & \S\ref{sec:concept-mc} \\
+ToF vs LiDAR & \code{sensor\_noise.m} \code{'tof'} vs \code{'lidar'} & E3, E6 & \S\ref{sec:concept-tof} \\
+Formation geometry & \code{formation\_geometry.m} / \code{geometry.py} & E4, E5 & \S\ref{sec:concept-vfh} \\
+\bottomrule
+\end{tabular}
+\end{keybox}
+
+\subsection{Reactive obstacle avoidance I: potential fields}
+\label{sec:concept-apf}
+
+The oldest answer to ``how should a robot steer around things it can see''
+is to pretend space is a landscape of hills and a valley. The goal exerts an
+\emph{attractive} force, every obstacle an \emph{inflating} repulsion, and
+the robot simply walks downhill on the sum:
+\begin{equation}
+u = k_{\mathrm{att}}\,(x_{\mathrm{goal}} - x)\; -\;
+    \sum_{i} k_{\mathrm{rep}}\,\nabla \phi(d_i),
+\qquad
+\phi(d) \approx \Big(\tfrac{1}{d}-\tfrac{1}{d_0}\Big)^2 \ \text{for } d < d_0,
+\label{eq:apf-concept}
+\end{equation}
+where $d_i$ is the clearance to obstacle $i$ and $d_0$ the influence radius.
+Three properties matter for everything that follows:
+
+\begin{enumerate}[leftmargin=1.9em]
+\item \textbf{It is reactive.} No map, no plan --- the command is a function
+of the \emph{current} scan only. That is why it costs microseconds (E1's
+\code{apf} compute bar) and why it can be reflexively layered under any other
+planner.
+\item \textbf{It has a famous failure mode.} Two obstacle faces pushing from
+opposite sides can cancel the goal attraction exactly: a \emph{local
+minimum}. The robot then presses into a wall forever. This is not a bug in
+one implementation; it is a theorem about eq.~\eqref{eq:apf-concept}, shown
+rigorously by Koren and Borenstein \cite{koren1991}. E1's \code{apf} row
+(Table~\ref{tab:e1}) is where to look for this theorem in the data: a law
+that stops making progress without ever being refused by the safety gate.
+\item \textbf{It fixes itself if you add a histogram.} Vector fields answer
+``which way do forces point''; histograms (next subsection) answer ``which
+bearings are free'', and a free-bearing search cannot be trapped the same
+way.
+\end{enumerate}
+
+\paragraph{Go deeper.} Khatib introduced the real-time potential-field
+method \cite{khatib1986}; Koren and Borenstein catalogued its pathologies
+\cite{koren1991}. The friendliest video treatment is Chapter~10.6 of the
+Northwestern \emph{Modern Robotics} course \cite{lynchvideo}, six minutes
+that build eq.~\eqref{eq:apf-concept} visually; the textbook chapter behind
+it is Lynch \& Park \cite{lynch2017}, \S10.6.
+
+\subsection{Reactive obstacle avoidance II: histograms in motion (VFH)}
+\label{sec:concept-vfh}
+
+VFH replaces vector addition with \emph{voting}. Take the $n$ range beams of
+the scan. Each beam $b$ measures range $d_b$ along bearing $\theta_b$. Reduce
+the plane to $\alpha$ sectors of $\Delta\theta$ degrees and give each sector
+an obstacle density: the classic choice, used verbatim in
+\code{pvfh\_scan.m}/\code{vfh.py}, is
+\begin{equation}
+h_b \;=\; \Big(1-\tfrac{\min(d_b, d_{\max})}{d_{\max}}\Big)^2,
+\qquad
+h_k = \sum_{b \in \mathrm{sector}\,k} h_b,
+\label{eq:vfh-concept}
+\end{equation}
+so a close return votes strongly, a far return weakly, and each sector sums
+its beams' votes. Sector $k$ is \emph{blocked} when $h_k$ exceeds the
+threshold \code{tau}; the robot steers into the \emph{gapped} direction
+closest to the goal bearing that also respects the robot's turning radius
+(a ``mask'' on candidate directions). The pipeline is exactly:
+scan $\to$ per-beam kernel \eqref{eq:vfh-concept} $\to$ sector histogram
+$\to$ threshold $\to$ masked gap selection $\to$ heading setpoint.
+
+Why this cannot share APF's failure mode: the two opposing walls both vote
+``blocked'' for their own sectors, but the \emph{search} over free sectors
+sees the aisle between them and takes it. The failure changes character: VFH
+cannot get stuck, but it \emph{can} misread --- which is where noise enters.
+
+\paragraph{How to read any VFH plot.} A polar histogram is a wheel with one
+wedge per sector; wedge height $=$ density \eqref{eq:vfh-concept}, the
+horizontal line is the threshold \code{tau}, and the chosen heading is the
+free wedge nearest the goal direction (drawn as an arrow). When you run
+\code{Simulation8\_dynamic.m} interactively with \code{viz.enable=true}, this
+wheel is the live figure to watch; the PDF flowchart in
+Section~\ref{sec:pvfhflow} shows the same steps statically.
+
+\paragraph{Go deeper.} The original paper \cite{borenstein1991} is short,
+heavily illustrated and still the best read --- free PDF from Yoram Koren's
+Michigan page. \emph{VFH+} \cite{ulrich1998} adds the robot-radius mask and
+hysteresis our implementation inherits. The MathWorks documentation page
+\cite{mwvfh} shows MATLAB's own \code{controlVFH+} object, useful to compare
+parameter names. For video: a lecture on sonar sensing and VFH
+\cite{vfhvideo} and the shorter ``Vector Field Histogram'' explainer
+\cite{vfhvideo2}; the Wikipedia article \cite{vfhwiki} is a good 5-minute
+recap with the original figures.
+
+\subsection{Reasoning under sensor uncertainty: the probabilistic histogram}
+\label{sec:concept-unc}
+
+Deterministic VFH answers one question per beam: \emph{is the bearing
+free?} --- threshold \eqref{eq:vfh-concept} against \code{tau}. With a
+perfect sensor that is fine. With real sensors it fails twice:
+
+\begin{enumerate}[leftmargin=1.9em]
+\item \textbf{Missed obstacle (dangerous).} A wall at 1.6~m whose return
+lands \emph{inside} the reaction envelope can still read ``free'' if the
+measurement noise pushes the estimate out --- the robot drives at a wall it
+just saw. This is the regime E2 probes: the high-$\sigma_0$ columns of
+Table~\ref{tab:e2}, where the gate-rejection count measures exactly these
+``drove at something it had just seen'' events.
+\item \textbf{Flicker (wasteful).} Graded kernel values near \code{tau}
+flip between free and blocked as noise arrives, so the robot brakes and
+lurches --- clearance collapses even when it does not collide.
+\end{enumerate}
+
+The probabilistic layer answers a better question: \emph{given everything I
+know --- range estimate, sensor variance, FoV geometry --- how likely is this
+bearing to be blocked?} Three ingredients, one per answer:
+
+\paragraph{1. A per-beam measurement distribution.} Each beam returns
+$\hat d_b$ modelled as true range plus Gaussian noise, $\hat d_b \sim
+\mathcal N(d_b,\, s_b^2)$, where \code{sensor\_noise.m} sets $s_b$: a flat
+$\sigma_0$ for the lidar kind, and for the ToF kind a linear growth term
+$s_b = \sigma_0 + k_{\mathrm{rng}}\, d_b$ with a $60^\circ$ FoV arc ---
+matched to how cheap ToF arrays actually behave (\S\ref{sec:concept-tof}).
+
+\paragraph{2. A blockage probability.} The bearing is ``blocking'' if the
+\emph{true} obstacle surface lies inside the reaction envelope, i.e.\ true
+range $d_b \le d_{\mathrm{block}}$. Since $\hat d_b$ is a noisy proxy for
+$d_b$, that event has probability
+\begin{equation}
+p_b \;=\; \Pr(d_b \le d_{\mathrm{block}} \mid \hat d_b, s_b)
+       \;=\; \Phi\!\Big(\frac{d_{\mathrm{block}} - \hat d_b}{s_b}\Big),
+\label{eq:prise-concept}
+\end{equation}
+with $\Phi$ the standard normal CDF. If \eqref{eq:prise-concept} looks
+familiar, it is exactly the beam model of probabilistic robotics
+\cite{thrun2005} --- the same $z$-test against a range threshold, turned
+into a soft membership. The floor $p_{\mathrm{unknown}} = 0.05$ applies
+outside the sensor's FoV: the unobserved rear hemisphere is neither a phantom
+wall nor a blind spot, it is a calibrated shrug.
+
+\paragraph{3. Sector pooling and the expected kernel.} A sector is as
+blocked as its \emph{best evidence}: independent per-beam probabilities pool
+by noisy-OR,
+\begin{equation}
+p_{\mathrm{sector}} \;=\; 1 - \prod_{b \in k} (1 - p_b),
+\label{eq:noisyor-concept}
+\end{equation}
+so every additional beam covering the sector genuinely adds evidence. In
+the implementation this pooled probability is a \emph{diagnostic} (it is
+logged and plotted, and it is the quantity a risk monitor would threshold);
+the steering itself uses the kernel below, for the saturation reason given
+in \S\ref{sec:pvfh}. Finally the deterministic kernel \eqref{eq:vfh-concept} is replaced by its
+\emph{posterior expectation},
+\begin{equation}
+u_b \;=\; \sqrt{\tfrac{\sigma_h^2}{\sigma_h^2 + s_b^2}}\;
+        \exp\!\Big(\!-\tfrac{d^2}{2(\sigma_h^2 + s_b^2)}\Big),
+\label{eq:ukernel-concept}
+\end{equation}
+i.e.\ the expected value of the Gaussian danger kernel when the range is a
+belief rather than a fact. Equation \eqref{eq:ukernel-concept} has two
+properties that matter more than its formula:
+
+\begin{itemize}[leftmargin=1.6em]
+\item \textbf{Exact deterministic limit.} As $s_b \to 0$ the prefactor
+$\to 1$ and \eqref{eq:ukernel-concept} $\to$ \eqref{eq:vfh-concept}: with a
+perfect sensor P-VFH \emph{is} the deterministic histogram
+(Proposition~1). The paired-difference plot of
+Section~\ref{sec:paired} is where this shows up as data: the P-VFH~$-$~pVFH
+difference should shrink toward zero at the low-noise end.
+\item \textbf{A reaction envelope that widens with noise, never
+saturation.} The range at which a return starts to block grows with $s_b$
+(Proposition~2, Fig.~\ref{fig:theory}) --- uncertainty makes
+the robot react \emph{earlier}. Note the precise statement: the kernel
+\emph{value} rises with noise only for returns beyond
+$\sqrt{\sigma_h^2 + s_b^2}$; very near returns read slightly lower but stay
+far above the threshold. (An earlier version of this report claimed the
+kernel inflates at every range; that was wrong.)
+\end{itemize}
+
+The one-sentence summary: \textbf{VFH thresholds a histogram of measurements;
+P-VFH thresholds a histogram of beliefs.}
+
+\paragraph{Go deeper.} Thrun, Burgard \& Fox, \emph{Probabilistic Robotics}
+\cite{thrun2005}: Chapter~2 (recursive state estimation) and the beam
+models of Chapter~6 are the mathematical home of \eqref{eq:prise-concept}.
+Cyrill Stachniss's video lectures are the standard free companion: the Bayes
+filter lecture \cite{stachnissbayes} builds the inference behind ``probability
+of a hypothesis given a noisy measurement'', and his 5-minute occupancy-grid
+explainer \cite{stachnissgrid} shows the identical free/blocked/unknown
+triage P-VFH applies per sector.
+
+\subsection{Monte Carlo experiments: factors, grids, cells, seeds}
+\label{sec:concept-mc}
+
+A robot run is stochastic --- noise realisations differ run to run --- so one
+run proves nothing. The fix is to run the mission many times under a
+controlled experimental grid and report statistics. Section~\ref{sec:gridconcept}
+gives the operational vocabulary; here is the reasoning behind it.
+
+\begin{keybox}{The five words, in one breath}
+A \textbf{factor} is what you vary on purpose; its values are
+\textbf{levels}; the \textbf{grid} is every combination of levels; one
+combination is a \textbf{cell}; one full mission executed in a cell under
+one \textbf{seed} (a pinned random number generator) is a \textbf{run}.
+Repeat runs with different seeds and report means/rates/spreads:
+that repetition is the \textbf{Monte Carlo} method.
+\end{keybox}
+
+\paragraph{Why the seed is the most important knob.} Seeding the PRNG
+(``random'' numbers drawn from a reproducible generator) makes a stochastic
+experiment \emph{replayable}. Every run is seeded explicitly (MATLAB \code{rng(seed)}; Octave
+\code{randn('seed',...)}; the Python port \code{np.random.default\_rng(seed)}). Consequences you can rely on:
+re-running a cell reproduces its CSV byte-for-byte (a regression test in
+itself), and --- the design trick --- \emph{two algorithms sharing a seed
+see the identical noise realisation}. Their per-seed difference then
+contains no noise variance at all, only the steering-law difference: a
+paired comparison, the experimental analogue of a paired t-test. That is
+why Section~\ref{sec:paired} can resolve small clearance differences with
+just five seeds.
+
+\paragraph{Reading results honestly.} Three habits:
+(i) report \emph{success rate and collisions beside every mean} --- a cell
+that reaches 60\% of the time with a beautiful mean clearance is a failing
+cell; (ii) compare cells that differ \emph{only} in the factor your question
+is about (``ceteris paribus'' --- all E1 algorithms consume the same scan
+and gains); (iii) long-format CSVs (one row per run) are the safe storage,
+because any summary is then a trivial \code{GROUP BY}.
+
+\paragraph{Go deeper.} Art Owen's in-progress Monte Carlo book
+\cite{owen2019} is free online; Chapter~1 motivates exactly our setup
+(estimate an expectation by sampling, report the error) and Chapter~9 covers
+variance reduction --- of which paired seeds are the simplest instance. For
+a 10-minute video, Steve Brunton's lecture on Monte Carlo sampling
+\cite{bruntonmc} shows the estimator and its error bars; the same channel's
+``Crude Monte Carlo'' demonstration \cite{bruntoncrude} is a worked example
+of seeding and error shrinkage with sample size.
+
+\subsection{ToF vs LiDAR: what the sensor choice does to a planner}
+\label{sec:concept-tof}
+
+E3 sweeps beam counts but the deeper hardware question is \emph{which
+sensor technology}, and E6 (\S\ref{sec:e6}) answers it directly with a
+matched design. The physics of the two contenders:
+
+\begin{itemize}[leftmargin=1.6em]
+\item \textbf{LiDAR} (e.g.\ a rotating 288-beam unit): time-of-flight laser
+ranging over a wide FoV at high angular resolution. Accurate and dense
+--- that is the ``$288$ beams, $\sigma_0 = 0.02$'' reference row --- but
+mechanically complex and comparatively expensive.
+\item \textbf{ToF arrays} (e.g.\ ST VL53-series): solid-state flash LiDAR
+on a chip --- a fixed grid of zones (8--64) over a narrow FoV, no moving
+parts, a few dollars, but coarse angular resolution, narrow field, and
+range error that \emph{grows with distance} (multipath and return-strength
+effects). That growth is what the \code{'tof'} noise model encodes:
+$s_b = \sigma_0 + k_{\mathrm{rng}}\, d_b$ inside a $60^\circ$ arc that is
+fixed to the \emph{body} (the fan turns with the payload heading).
+\end{itemize}
+
+Two experimental-design warnings before reading E6's tables. First, the
+comparison must be \emph{matched}: same world, same seeds, same algorithm,
+same $\sigma_0$ --- only the sensor kind differs --- otherwise the effect of
+``sensor'' is confounded with everything else. (This is
+\S\ref{sec:gridconcept}'s rule~1 applied a second time.) Second, distinguish
+the two axes of ``less sensor'': \emph{resolution} (beam count, E3) and
+\emph{noise structure} (homoscedastic vs range-growing, E6). A sensor can
+lose beams without losing reliability --- the $p_{\mathrm{unknown}}$
+floor keeps unobserved bearings from being read as confidently free --- but
+range-growing noise is a different attack: it blurs \emph{far} obstacles,
+precisely where early warning lives. When you read E6's numbers, keep the
+two effects a sensor change mixes apart: \emph{angular coverage} (FoV, beam
+count) and \emph{per-return noise growth} ($s_b$). They can pull in opposite
+directions: a narrow fan sees fewer side obstacles to react to, but it is
+also blind to anything approaching from the side or rear --- which is where
+the mover-contact column of Table~\ref{tab:e6} becomes the one to watch.
+
+\paragraph{Go deeper.} ST's VL53L5CX product page \cite{stvl53} documents a
+typical 8$\times$8 ToF array (FoV, zones, range-accuracy curve --- compare
+with \code{sensor\_noise.m}'s parameters); SEEED's TF-Luna wiki \cite{tfluna}
+is the cheapest reverse example (single-beam ToF, serial output). For the
+planner's side of the trade, re-read \S\ref{sec:concept-unc} with ``which
+$s_b$ curve am I feeding it?'' in mind.
+
+\subsection{Self-check: five questions you can now answer}
+
+\begin{enumerate}[leftmargin=1.9em]
+\item Why can \code{apf} fail \emph{silently} (no gate rejections, no goal)
+while a noisy deterministic histogram fails \emph{loudly} (many rejections)? \emph{(Local minimum vs
+thresholded noise: \S\ref{sec:concept-apf}, \S\ref{sec:concept-unc}.)}
+\item Which equation guarantees P-VFH reduces to VFH for a perfect sensor,
+and which figure shows that as data? \emph{(Eq.~\eqref{eq:ukernel-concept};
+Fig.~\ref{fig:paired} at low $\sigma_0$.)}
+\item Your ToF array drops from 16 to 8 beams. What keeps the bearings no
+beam covers from being read as confidently free, and which experiment
+measures the cost? \emph{(The $p_{\mathrm{unknown}}$ floor; E3 and E6 ---
+watch the mover-contact column.)}
+\item Two algorithms share seed 3. Their min-clearance difference on that
+seed is 0.4~m. Can noise explain it? \emph{(No --- paired design,
+\S\ref{sec:concept-mc}.)}
+\item Why is a ``flat goal rate, sagging clearance'' pattern a warning light
+rather than good news? \emph{(The margin is what absorbs the next surprise;
+\S\ref{sec:e3} how-to-read.)}
+\end{enumerate}
+
+\paragraph{References.} The complete reference list for the whole report
+(videos included) is printed once at the end of the document.

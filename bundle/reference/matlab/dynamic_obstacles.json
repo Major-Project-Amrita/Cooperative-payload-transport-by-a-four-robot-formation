@@ -1,0 +1,40 @@
+{
+  "comment": "Dynamic-obstacle motion contract. ONE file drives the obstacles in BOTH the MATLAB simulation (Simulation8_dynamic.m) and the ROS 2 stack (ros2_swarm_transport/mover_node.py). Frame: the Gazebo world / ROS 2 map frame, metres, ENU, CCW-positive - the same frame the MATLAB scripts use, so no transform is ever applied. Motion model: each mover waits at route[0] until t0, then translates along the straight route at 'speed' m/s. loop=false: it stops at route[1] and stays there. loop=true: it shuttles between the endpoints forever, pausing 'wait' seconds at each end. Velocities are piecewise constant, so prediction (constant-velocity) is exact.",
+  "frame": "world",
+  "dt": 0.1,
+  "movers": [
+    {
+      "name": "mover1",
+      "shape": "box",
+      "size": [0.7, 0.7],
+      "radius": 0.0,
+      "route": [[-6.0, 0.5], [13.9, 0.5]],
+      "speed": 0.9,
+      "t0": 2.0,
+      "wait": 0.0,
+      "loop": false
+    },
+    {
+      "name": "mover2",
+      "shape": "box",
+      "size": [0.7, 0.7],
+      "radius": 0.0,
+      "route": [[7.0, -0.5], [-13.5, -0.5]],
+      "speed": 0.8,
+      "t0": 4.0,
+      "wait": 6.0,
+      "loop": true
+    },
+    {
+      "name": "mover3",
+      "shape": "circle",
+      "size": [1.0, 1.0],
+      "radius": 0.5,
+      "route": [[2.0, -4.2], [12.0, -4.2]],
+      "speed": 0.5,
+      "t0": 0.0,
+      "wait": 3.0,
+      "loop": true
+    }
+  ]
+}

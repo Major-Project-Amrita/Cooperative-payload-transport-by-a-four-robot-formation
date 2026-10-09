@@ -1,0 +1,95 @@
+\section{The dynamic-obstacle extension}
+\label{sec:dynamic}
+
+Static obstacles test avoidance; \emph{moving} obstacles test prediction. The
+dynamic world adds three kinematic movers (two 0.7~m forklift-class boxes, one
+1.0~m drum) driven by a shared motion contract, and the controller gains three
+mechanisms to survive them.
+
+\subsection{The shared motion contract}
+
+Both the MATLAB simulation and the (future) ROS~2 stack evaluate obstacle
+motion from one file, \code{dynamic\_obstacles.json}, interpreted by one
+function (\code{eval\_mover\_pose.m}):
+%
+\[
+\mathbf{m}(t) =
+\begin{cases}
+\mathbf{a} & t < t_0 \quad \text{(parked at the route start)}\\[2pt]
+\mathbf{a} + \min\!\bigl(1,\, \tfrac{(t - t_0)\,v_m}{L}\bigr)(\mathbf{b} - \mathbf{a})
+& \text{one-way}\\[4pt]
+\text{shuttle } \mathbf{a} \leftrightarrow \mathbf{b},\ \text{leg time } 
+T = \tfrac{L}{v_m} + t_{\mathrm{wait}} & \text{loop}
+\end{cases}
+\]
+%
+The velocity is piecewise constant, so \textbf{constant-velocity prediction is
+exact between speed changes}, not an approximation. The scenario: mover1
+crosses west$\to$east at $y = +0.5$ once (the formation yields); mover2 sweeps
+the main aisle head-on forever; mover3 patrols the south aisle as background
+traffic.
+
+\subsection{Mechanism 1: predictive scan}
+
+\code{pvfh\_predict.m} extends the VFH input: movers are raycast at their
+contracted poses $t,\ t+\Delta t,\ \dots,\ t+T_{\mathrm{lead}}$
+($T_{\mathrm{lead}} = 0.5$~s, sampled at $\Delta t$) and each beam keeps the
+\emph{nearest blocking instance over the whole horizon}. The static sensing
+path is untouched --- statics do not move, so their perception needs no
+prediction. Effect: a mover closing head-on at $0.9$~m/s appears in the
+histogram $\sim 0.5$~s ($\approx 0.45$~m of range) before an instantaneous
+scan would place it inside the danger zone.
+
+\begin{keybox}{A design dead end worth recording}
+An earlier variant shifted the \emph{sensor position} by the self-motion
+$\mathbf{v}_{\mathrm{self}} T_{\mathrm{lead}}$ and shortened all beams by the
+self-displacement. That couples the current heading into the perception of
+\emph{static} geometry: the controller sees different walls depending on which
+way it points, and the feedback loop produces heading limit cycles. The fix
+was architectural --- predict only the things that move. It is a good example
+of why per-module numerics (scan construction) matter more than gains.
+\end{keybox}
+
+\subsection{Mechanism 2: speed slowdown}
+
+The transport speed scales down smoothly as the \emph{predicted} worst-case
+gap to any mover shrinks:
+%
+\begin{align*}
+\text{speed\_scale} &=
+\begin{cases}
+\max\bigl(s_{\min},\ 0.8\, g_{\mathrm{pred}} / (m_{\mathrm{slow}} + r)\bigr)
+& g_{\mathrm{pred}} < m_{\mathrm{slow}} + r\\
+1 & \text{otherwise}
+\end{cases}\\[6pt]
+g_{\mathrm{pred}} &= \min_{T \le T_{\mathrm{look}}}
+\Bigl[ \lVert \mathbf{m}(t{+}T) - \mathbf{c} - \mathbf{v}_{\mathrm{self}} T \rVert
+- r_m - \lVert \mathbf{v}_{\mathrm{self}}\rVert T \Bigr]
+\end{align*}
+%
+with $m_{\mathrm{slow}} = 0.25$~m, $s_{\min} = 0.4$, $T_{\mathrm{look}} =
+1.0$~s. The floor $s_{\min}$ keeps the formation making progress (a full stop
+near a moving obstacle is how deadlocks form); movers slower than 25\% of the
+formation's speed are treated as parked and do not trigger the slowdown.
+
+\subsection{Mechanism 3: the $t$ and $t{+}\Delta t$ commit test}
+
+A step is committed only if the whole body (payload block included, via the
+exact separating-axis test) is collision-free at $t$ \emph{and} at
+$t + \Delta t$ with the movers at their contracted future poses. This is what
+stops the block from stepping into a lane a forklift occupies one tick later.
+The escape probe got the matching treatment: an escape heading is accepted
+only if the body can hold it for $T_{\mathrm{hold}} = 1.5$~s while the movers
+keep moving.
+
+\subsection{Verified outcome}
+
+(Single reference run recorded \emph{before} the October 2026 audit of
+\S\ref{sec:audit}; re-run \code{Simulation8\_dynamic} to refresh it --- the
+Monte Carlo tables of \S\ref{sec:experiments} are the authoritative
+numbers.) On the dynamic world the full pipeline reaches the goal with
+\textbf{zero collision steps}, minimum formation clearance $0.51$~m, minimum
+gap to any mover $1.22$~m (the predicted worst case $0.33$~m, absorbed by the
+slowdown and VFH), path efficiency $0.93$, total turning $12.0$~rad over
+$42.5$~s of transport. The static-world regression on the same parameters is
+unchanged, confirming the dynamic layer costs nothing when nothing moves.

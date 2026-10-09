@@ -1,0 +1,128 @@
+<?xml version="1.0" ?>
+<!--
+  swarm_world_plaza.sdf - OPEN PLAZA (30 m x 16 m), second environment class.
+
+  No aisles: fourteen compact obstacles (posts r = 0.5 m, 0.9 m crates)
+  scattered over an open floor, so the formation always has several
+  homotopy classes to choose from. Traffic CROSSES the route (north-south
+  shuttles and one diagonal drum) instead of running along it as in the
+  warehouse. Same bounds, start ring (-12, 0) and goal pad (12, 0) as
+  swarm_world_dynamic.sdf, so every metric is directly comparable.
+-->
+<sdf version="1.8">
+  <world name="default">
+
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 12 0 0 0</pose>
+      <diffuse>0.9 0.9 0.9 1</diffuse><specular>0.2 0.2 0.2 1</specular>
+      <attenuation><range>1000</range><constant>0.9</constant><linear>0.01</linear><quadratic>0.001</quadratic></attenuation>
+      <direction>-0.4 0.2 -0.9</direction>
+    </light>
+
+    <model name="ground_plane"><static>true</static><link name="link">
+      <collision name="c"><geometry><plane><normal>0 0 1</normal><size>60 60</size></plane></geometry></collision>
+      <visual name="v"><geometry><plane><normal>0 0 1</normal><size>60 60</size></plane></geometry>
+        <material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.75 0.75 0.75 1</diffuse></material></visual>
+    </link></model>
+
+    <model name="wall_n"><static>true</static><pose>0 8 1.0 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><box><size>30 0.3 2</size></box></geometry></collision>
+      <visual name="v"><geometry><box><size>30 0.3 2</size></box></geometry>
+        <material><ambient>0.45 0.45 0.5 1</ambient><diffuse>0.45 0.45 0.5 1</diffuse></material></visual></link></model>
+    <model name="wall_s"><static>true</static><pose>0 -8 1.0 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><box><size>30 0.3 2</size></box></geometry></collision>
+      <visual name="v"><geometry><box><size>30 0.3 2</size></box></geometry>
+        <material><ambient>0.45 0.45 0.5 1</ambient><diffuse>0.45 0.45 0.5 1</diffuse></material></visual></link></model>
+    <model name="wall_e"><static>true</static><pose>15 0 1.0 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><box><size>0.3 16 2</size></box></geometry></collision>
+      <visual name="v"><geometry><box><size>0.3 16 2</size></box></geometry>
+        <material><ambient>0.45 0.45 0.5 1</ambient><diffuse>0.45 0.45 0.5 1</diffuse></material></visual></link></model>
+    <model name="wall_w"><static>true</static><pose>-15 0 1.0 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><box><size>0.3 16 2</size></box></geometry></collision>
+      <visual name="v"><geometry><box><size>0.3 16 2</size></box></geometry>
+        <material><ambient>0.45 0.45 0.5 1</ambient><diffuse>0.45 0.45 0.5 1</diffuse></material></visual></link></model>
+    <model name="post1"><static>true</static><pose>-6 1.5 0.75 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><cylinder><radius>0.5</radius><length>1.5</length></cylinder></geometry></collision>
+      <visual name="v"><geometry><cylinder><radius>0.5</radius><length>1.5</length></cylinder></geometry>
+        <material><ambient>0.3 0.3 0.6 1</ambient><diffuse>0.3 0.3 0.6 1</diffuse></material></visual></link></model>
+    <model name="crate2"><static>true</static><pose>-3.5 -0.3 0.3 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><box><size>0.9 0.9 0.6</size></box></geometry></collision>
+      <visual name="v"><geometry><box><size>0.9 0.9 0.6</size></box></geometry>
+        <material><ambient>0.4 0.28 0.12 1</ambient><diffuse>0.4 0.28 0.12 1</diffuse></material></visual></link></model>
+    <model name="post3"><static>true</static><pose>-3 -3.0 0.75 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><cylinder><radius>0.5</radius><length>1.5</length></cylinder></geometry></collision>
+      <visual name="v"><geometry><cylinder><radius>0.5</radius><length>1.5</length></cylinder></geometry>
+        <material><ambient>0.3 0.3 0.6 1</ambient><diffuse>0.3 0.3 0.6 1</diffuse></material></visual></link></model>
+    <model name="post4"><static>true</static><pose>0 0.9 0.75 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><cylinder><radius>0.55</radius><length>1.5</length></cylinder></geometry></collision>
+      <visual name="v"><geometry><cylinder><radius>0.55</radius><length>1.5</length></cylinder></geometry>
+        <material><ambient>0.3 0.3 0.6 1</ambient><diffuse>0.3 0.3 0.6 1</diffuse></material></visual></link></model>
+    <model name="post5"><static>true</static><pose>3 4.0 0.75 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><cylinder><radius>0.5</radius><length>1.5</length></cylinder></geometry></collision>
+      <visual name="v"><geometry><cylinder><radius>0.5</radius><length>1.5</length></cylinder></geometry>
+        <material><ambient>0.3 0.3 0.6 1</ambient><diffuse>0.3 0.3 0.6 1</diffuse></material></visual></link></model>
+    <model name="post6"><static>true</static><pose>4 -1.9 0.75 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><cylinder><radius>0.5</radius><length>1.5</length></cylinder></geometry></collision>
+      <visual name="v"><geometry><cylinder><radius>0.5</radius><length>1.5</length></cylinder></geometry>
+        <material><ambient>0.3 0.3 0.6 1</ambient><diffuse>0.3 0.3 0.6 1</diffuse></material></visual></link></model>
+    <model name="crate7"><static>true</static><pose>6.2 -0.2 0.3 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><box><size>0.9 0.9 0.6</size></box></geometry></collision>
+      <visual name="v"><geometry><box><size>0.9 0.9 0.6</size></box></geometry>
+        <material><ambient>0.4 0.28 0.12 1</ambient><diffuse>0.4 0.28 0.12 1</diffuse></material></visual></link></model>
+    <model name="post8"><static>true</static><pose>7 2.6 0.75 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><cylinder><radius>0.5</radius><length>1.5</length></cylinder></geometry></collision>
+      <visual name="v"><geometry><cylinder><radius>0.5</radius><length>1.5</length></cylinder></geometry>
+        <material><ambient>0.3 0.3 0.6 1</ambient><diffuse>0.3 0.3 0.6 1</diffuse></material></visual></link></model>
+    <model name="post9"><static>true</static><pose>-1 4.6 0.75 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><cylinder><radius>0.5</radius><length>1.5</length></cylinder></geometry></collision>
+      <visual name="v"><geometry><cylinder><radius>0.5</radius><length>1.5</length></cylinder></geometry>
+        <material><ambient>0.3 0.3 0.6 1</ambient><diffuse>0.3 0.3 0.6 1</diffuse></material></visual></link></model>
+    <model name="post10"><static>true</static><pose>1 -4.8 0.75 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><cylinder><radius>0.5</radius><length>1.5</length></cylinder></geometry></collision>
+      <visual name="v"><geometry><cylinder><radius>0.5</radius><length>1.5</length></cylinder></geometry>
+        <material><ambient>0.3 0.3 0.6 1</ambient><diffuse>0.3 0.3 0.6 1</diffuse></material></visual></link></model>
+    <model name="crate11"><static>true</static><pose>-7 -4 0.3 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><box><size>0.9 0.9 0.6</size></box></geometry></collision>
+      <visual name="v"><geometry><box><size>0.9 0.9 0.6</size></box></geometry>
+        <material><ambient>0.4 0.28 0.12 1</ambient><diffuse>0.4 0.28 0.12 1</diffuse></material></visual></link></model>
+    <model name="post12"><static>true</static><pose>9 -3.6 0.75 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><cylinder><radius>0.5</radius><length>1.5</length></cylinder></geometry></collision>
+      <visual name="v"><geometry><cylinder><radius>0.5</radius><length>1.5</length></cylinder></geometry>
+        <material><ambient>0.3 0.3 0.6 1</ambient><diffuse>0.3 0.3 0.6 1</diffuse></material></visual></link></model>
+    <model name="post13"><static>true</static><pose>8.5 5.0 0.75 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><cylinder><radius>0.5</radius><length>1.5</length></cylinder></geometry></collision>
+      <visual name="v"><geometry><cylinder><radius>0.5</radius><length>1.5</length></cylinder></geometry>
+        <material><ambient>0.3 0.3 0.6 1</ambient><diffuse>0.3 0.3 0.6 1</diffuse></material></visual></link></model>
+    <model name="crate14"><static>true</static><pose>-4.5 4.2 0.3 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><box><size>0.9 0.9 0.6</size></box></geometry></collision>
+      <visual name="v"><geometry><box><size>0.9 0.9 0.6</size></box></geometry>
+        <material><ambient>0.4 0.28 0.12 1</ambient><diffuse>0.4 0.28 0.12 1</diffuse></material></visual></link></model>
+
+    <!-- kinematic movers: poses prescribed by the JSON contract -->
+    <model name="plaza_mover1"><static>true</static><pose>-1.5 -6.5 0.25 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><box><size>0.7 0.7 0.5</size></box></geometry></collision>
+      <visual name="v"><geometry><box><size>0.7 0.7 0.5</size></box></geometry>
+        <material><ambient>0.95 0.55 0.1 1</ambient><diffuse>0.95 0.55 0.1 1</diffuse></material></visual></link></model>
+    <model name="plaza_mover2"><static>true</static><pose>5.0 6.5 0.25 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><box><size>0.7 0.7 0.5</size></box></geometry></collision>
+      <visual name="v"><geometry><box><size>0.7 0.7 0.5</size></box></geometry>
+        <material><ambient>0.95 0.55 0.1 1</ambient><diffuse>0.95 0.55 0.1 1</diffuse></material></visual></link></model>
+    <model name="plaza_mover3"><static>true</static><pose>10.5 -6.0 0.6 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><cylinder><radius>0.5</radius><length>1.2</length></cylinder></geometry></collision>
+      <visual name="v"><geometry><cylinder><radius>0.5</radius><length>1.2</length></cylinder></geometry>
+        <material><ambient>0.95 0.55 0.1 1</ambient><diffuse>0.95 0.55 0.1 1</diffuse></material></visual></link></model>
+
+    <model name="goal_pad"><static>true</static><pose>12 0 0.01 0 0 0</pose><link name="l">
+      <visual name="v"><geometry><cylinder><radius>1.2</radius><length>0.02</length></cylinder></geometry>
+        <material><ambient>0 0.8 0 1</ambient><diffuse>0 0.9 0 1</diffuse></material></visual></link></model>
+
+  </world>
+</sdf>

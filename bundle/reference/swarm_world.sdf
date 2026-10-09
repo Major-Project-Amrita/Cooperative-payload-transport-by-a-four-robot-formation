@@ -1,0 +1,89 @@
+<?xml version="1.0" ?>
+<!--
+  swarm_world.sdf — medium warehouse (30 m x 16 m).
+  Perimeter walls, warehouse shelf racks framing a central aisle, 3 pillar
+  obstacles in the aisle for VFH to dodge, and a green goal pad at the far end.
+  The swarm travels the central aisle (y ~ 0) left -> right in formation.
+-->
+<sdf version="1.8">
+  <world name="default">
+
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 12 0 0 0</pose>
+      <diffuse>0.9 0.9 0.9 1</diffuse><specular>0.2 0.2 0.2 1</specular>
+      <attenuation><range>1000</range><constant>0.9</constant><linear>0.01</linear><quadratic>0.001</quadratic></attenuation>
+      <direction>-0.4 0.2 -0.9</direction>
+    </light>
+
+    <model name="ground_plane"><static>true</static><link name="link">
+      <collision name="c"><geometry><plane><normal>0 0 1</normal><size>60 60</size></plane></geometry></collision>
+      <visual name="v"><geometry><plane><normal>0 0 1</normal><size>60 60</size></plane></geometry>
+        <material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.75 0.75 0.75 1</diffuse></material></visual>
+    </link></model>
+
+    <!-- ===================== Perimeter walls ===================== -->
+    <model name="wall_n"><static>true</static><pose>0 8 1 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><box><size>30 0.3 2</size></box></geometry></collision>
+      <visual name="v"><geometry><box><size>30 0.3 2</size></box></geometry>
+        <material><ambient>0.5 0.5 0.55 1</ambient><diffuse>0.5 0.5 0.55 1</diffuse></material></visual></link></model>
+    <model name="wall_s"><static>true</static><pose>0 -8 1 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><box><size>30 0.3 2</size></box></geometry></collision>
+      <visual name="v"><geometry><box><size>30 0.3 2</size></box></geometry>
+        <material><ambient>0.5 0.5 0.55 1</ambient><diffuse>0.5 0.5 0.55 1</diffuse></material></visual></link></model>
+    <model name="wall_e"><static>true</static><pose>15 0 1 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><box><size>0.3 16 2</size></box></geometry></collision>
+      <visual name="v"><geometry><box><size>0.3 16 2</size></box></geometry>
+        <material><ambient>0.5 0.5 0.55 1</ambient><diffuse>0.5 0.5 0.55 1</diffuse></material></visual></link></model>
+    <model name="wall_w"><static>true</static><pose>-15 0 1 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><box><size>0.3 16 2</size></box></geometry></collision>
+      <visual name="v"><geometry><box><size>0.3 16 2</size></box></geometry>
+        <material><ambient>0.5 0.5 0.55 1</ambient><diffuse>0.5 0.5 0.55 1</diffuse></material></visual></link></model>
+
+    <!-- ===================== Shelf racks (frame the aisle) ===================== -->
+    <model name="shelf_top"><static>true</static><pose>0 5.8 1 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><box><size>22 1.4 2</size></box></geometry></collision>
+      <visual name="v"><geometry><box><size>22 1.4 2</size></box></geometry>
+        <material><ambient>0.55 0.4 0.2 1</ambient><diffuse>0.6 0.42 0.2 1</diffuse></material></visual></link></model>
+    <model name="shelf_bot"><static>true</static><pose>0 -5.8 1 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><box><size>22 1.4 2</size></box></geometry></collision>
+      <visual name="v"><geometry><box><size>22 1.4 2</size></box></geometry>
+        <material><ambient>0.55 0.4 0.2 1</ambient><diffuse>0.6 0.42 0.2 1</diffuse></material></visual></link></model>
+    <!-- a couple of side racks for depth -->
+    <model name="shelf_tl"><static>true</static><pose>-9 3.2 0.75 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><box><size>3 0.9 1.5</size></box></geometry></collision>
+      <visual name="v"><geometry><box><size>3 0.9 1.5</size></box></geometry>
+        <material><ambient>0.55 0.4 0.2 1</ambient><diffuse>0.6 0.42 0.2 1</diffuse></material></visual></link></model>
+    <model name="shelf_br"><static>true</static><pose>9 -3.2 0.75 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><box><size>3 0.9 1.5</size></box></geometry></collision>
+      <visual name="v"><geometry><box><size>3 0.9 1.5</size></box></geometry>
+        <material><ambient>0.55 0.4 0.2 1</ambient><diffuse>0.6 0.42 0.2 1</diffuse></material></visual></link></model>
+
+    <!-- ===================== Pillar obstacles in the aisle ===================== -->
+    <model name="pillar1"><static>true</static><pose>-3 1 0.75 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><box><size>0.8 0.8 1.5</size></box></geometry></collision>
+      <visual name="v"><geometry><box><size>0.8 0.8 1.5</size></box></geometry>
+        <material><ambient>0.8 0.15 0.15 1</ambient><diffuse>0.8 0.15 0.15 1</diffuse></material></visual></link></model>
+    <model name="pillar2"><static>true</static><pose>3 -1 0.75 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><cylinder><radius>0.45</radius><length>1.5</length></cylinder></geometry></collision>
+      <visual name="v"><geometry><cylinder><radius>0.45</radius><length>1.5</length></cylinder></geometry>
+        <material><ambient>0.15 0.3 0.8 1</ambient><diffuse>0.15 0.3 0.8 1</diffuse></material></visual></link></model>
+    <model name="pillar3"><static>true</static><pose>7 0.8 0.75 0 0 0</pose><link name="l">
+      <collision name="c"><geometry><box><size>0.8 0.8 1.5</size></box></geometry></collision>
+      <visual name="v"><geometry><box><size>0.8 0.8 1.5</size></box></geometry>
+        <material><ambient>0.8 0.15 0.15 1</ambient><diffuse>0.8 0.15 0.15 1</diffuse></material></visual></link></model>
+
+    <!-- ===================== Goal pad ===================== -->
+    <model name="goal_pad"><static>true</static><pose>12 0 0.01 0 0 0</pose><link name="l">
+      <visual name="v"><geometry><cylinder><radius>1.2</radius><length>0.02</length></cylinder></geometry>
+        <material><ambient>0 0.8 0 1</ambient><diffuse>0 0.9 0 1</diffuse></material></visual></link></model>
+
+  </world>
+</sdf>

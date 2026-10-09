@@ -1,0 +1,45 @@
+# Build / install artifacts (colcon)
+build/
+install/
+build_isolated/
+log/
+*.log
+log/COLCON_IGNORE
+
+# Archives / large generated payloads
+docs.zip
+results.zip
+*.tar
+*.tar.gz
+*.zip
+*.iso
+*.bin
+*.dat
+*.bag
+*.rosbag
+*.mcap
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+*.egg
+*.pyc
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Ignore nested log dirs that sometimes get checked into src/
+src/log/

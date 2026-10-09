@@ -1,0 +1,97 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=2.4cm]{geometry}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{float}
+\usetikzlibrary{shapes.geometric,arrows.meta,positioning,fit,calc}
+\usepackage[most]{tcolorbox}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+
+\hypersetup{colorlinks=true, linkcolor=blue!60!black, urlcolor=blue!60!black,
+            citecolor=blue!60!black}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small Swarm Cooperative Transport --- Simulation Report}
+\fancyhead[R]{\small\thepage}
+
+\newtcolorbox{keybox}[1]{colback=blue!4,colframe=blue!45!black,
+  fonttitle=\bfseries,title={#1},boxrule=0.6pt,arc=2pt}
+
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\param}[2]{\code{#1}~\texttt{=}~#2}
+
+\title{\textbf{Dynamic-Obstacle Swarm Cooperative Transport}\\[4pt]
+\large The kinematic model, its algorithms and parameters, and how to read\\every graph\\[6pt]
+\normalsize Simulation report for \code{Simulation8_dynamic.m}}
+\author{Swarm Transport Project}
+\date{October 2026}
+
+\begin{document}
+\maketitle
+\thispagestyle{empty}
+
+\begin{abstract}
+\noindent
+Four differential-drive robots start scattered in a warehouse, assemble into a
+rigid $2\times2$ formation that physically carries a payload, and transport it
+through a corridor network that contains both static obstacles (walls, shelf
+racks, pillars, pallets) and \emph{moving} obstacles (kinematic forklifts and
+a drum following a shared motion contract). The whole stack is a kinematic
+model --- unicycle geometry, potential-field goal seeking, polar histogram
+obstacle avoidance, rigid-frame transport --- evaluated at 10~Hz against an
+exact signed-distance representation of the world. Eight steering laws are
+compared on scans from one shared, seeded sensor front end: an APF reflex,
+deterministic VFH+ with and without a mover-prediction horizon,
+Follow-the-Gap, a Dynamic-Window planner, a receding-horizon MPC, and the
+proposal, \textbf{P-VFH},
+which replaces the deterministic histogram occupancy with the posterior
+expectation of the danger kernel under the sensor's range uncertainty. That
+kernel reduces to the deterministic one as the noise vanishes and widens the
+reaction envelope as it grows (both proved); it is combined with a recursive
+range filter whose gain is set by the sensor noise model, and an ablation
+law separates the two. This report documents the
+model, the algorithms and every parameter, teaches the concepts, and
+presents a fourteen-experiment Monte Carlo evaluation (E1--E14) over three
+designed and ten randomly generated environments whose tables and figures are generated from a single results
+file. An audit in October 2026 (\S\ref{sec:audit}) found and fixed defects
+in the reference code that had produced the collision counts reported in
+earlier drafts; results obtained before that audit are superseded. On the corrected code (2,730 runs) the range filter removes most of
+the histogram's sensitivity to range noise in corridor and maze
+environments, while the expected kernel is not shown to add anything in a
+matched ablation; an MPC baseline is faster at normal traffic in the
+warehouse and better in an open plaza, while the histogram laws match it
+on random layouts and degrade more gracefully as traffic gets faster or
+denser (\S\ref{sec:findings}). An October 2026 independent replication
+(\S\ref{sec:replication}) then brought the Python and ROS 2 stacks to
+agree with the MATLAB grid in 220 of 221 cells, and a MuJoCo run showed
+where the kinematic model stops being predictive. All
+validation here is in simulation (\S\ref{sec:simvalidation} states what
+that does and does not establish).
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\input{sections/01_model}
+\input{sections/02_algorithms}
+\input{sections/03_dynamic}
+\input{sections/04_flowcharts}
+\input{sections/05_parameters}
+\input{sections/06_graphs}
+\input{sections/09_concepts}
+\input{sections/08_experiments}
+\input{sections/10_howto}
+\input{sections/11_replication}
+\input{sections/07_results}
+\input{sections/99_bibliography}
+
+\end{document}

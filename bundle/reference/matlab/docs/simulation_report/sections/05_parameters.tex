@@ -1,0 +1,171 @@
+\section{Every parameter, and why it has that value}
+
+\subsection{Motion and geometry}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}lllp{5.2cm}@{}}
+\toprule
+\textbf{Parameter} & \textbf{Value} & \textbf{Where} & \textbf{Role / why}\\
+\midrule
+$\Delta t$ (\code{dt}) & 0.1 s & 10 Hz & control period; also the mover
+prediction sample step\\
+\code{robot\_radius} & 0.18 m & all collision tests & TurtleBot3-class
+footprint; feeds inflation, feasibility, VFH enlargement\\
+\code{grid\_size} & $2\times2$ & formation & 4 robots; the payload block spans
+the square\\
+\code{grid\_spacing} & 1.18 m & slots & set by the corridor bottleneck
+(feasibility check); \textbf{must match} any ROS~2 run\\
+$V$ & 0.6 m/s & transport speed & fast enough to be useful, slow enough that
+$T_{\mathrm{lead}}$ prediction stays valid\\
+$V_f$ & 0.5 m/s & forming speed & slower assembly for gentler
+slot convergence\\
+$\omega_{\max}$ & 0.3 / 0.5 rad/s & transport / forming & hard turn-rate clip;
+the transport value keeps the payload rotation gentle\\
+$\alpha$ & 0.35 & heading smoothing & payload comfort vs obstacle reactivity
+(Section~1.1)\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{APF gains}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}lllp{5.2cm}@{}}
+\toprule
+\textbf{Parameter} & \textbf{Value} & \textbf{Where} & \textbf{Role / why}\\
+\midrule
+\code{w\_slot} & 2.0 & Phase 1 attraction & dominant over repulsion: reaching
+the slot is the objective\\
+\code{w\_repulse} & 1.5 & Phase 1 mate repulsion & strong enough to prevent
+overlap, weak enough not to fight the slot pull\\
+\code{repulse\_dist} & 1.2 m & Phase 1 & $\approx 3\times$ robot radius; beyond
+it mates do not interact\\
+\code{slow\_radius} & 1.5 m & Phase 1 & linear approach deceleration
+$v = V_f \min(1, e_i/r)$\\
+\code{w\_goal} & 1.0 & Phase 2 blend & goal term weight\\
+\code{w\_vfh} & 2.0 & Phase 2 blend & avoidance dominates: a 4 m-wide rigid
+body cannot trade clearance for progress\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{p-VFH}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}lllp{5.0cm}@{}}
+\toprule
+\textbf{Parameter} & \textbf{Value} & \textbf{Where} & \textbf{Role / why}\\
+\midrule
+\code{n\_beams} & 288 & scan & match your LiDAR; ROS~2 default here\\
+\code{num\_sectors} & 72 & histogram & $5^\circ$ resolution\\
+\code{sense\_range\_base} & 4.0 m & scan range & $+$ margin (body circumradius)\\
+\code{danger\_dist\_base} & 1.2 m & close reflex & NOT 2.5: in a 10 m aisle
+2.5 m sees both walls, they nearly cancel, residue fights the goal term\\
+\code{threshold} $\tau$ & 0.3 & valley cut & also drives $\sigma$
+auto-derivation\\
+\code{react\_gap} & 1.0 m & auto-$\sigma$ & reaction distance beyond the body
+$r_{\mathrm{eff}} + 1.0$\\
+\code{turn\_limit} & $45^\circ$ & valley search & how far off the goal bearing
+the controller will look\\
+\code{smooth\_window} & 5 & histogram & circular smoothing (wraps $\pm\pi$)\\
+\code{avoid\_gain} & 5 & close reflex & gain of the $1/d^3$ repulsion\\
+\code{hysteresis\_weight} & 0.6 & valley cost & damps sector-to-sector
+heading chatter\\
+\code{avoid\_falloff\_power} & 3 & close reflex & sharp near-field
+dominance\\
+\code{enlarge} & true & VFH+ & body-aware bearing blocking
+$\gamma = \arcsin(r_{\mathrm{eff}}/d)$\\
+\code{auto\_sigma} & true & histogram & $\sigma$ from required clearance, not
+fixed\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Algorithm axis and sensor noise}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}lllp{5.0cm}@{}}
+\toprule
+\textbf{Parameter} & \textbf{Value} & \textbf{Where} & \textbf{Role / why}\\
+\midrule
+\code{algo} & \code{'pvfh'} & both phases & the steering law:
+\code{'apf'} / \code{'vfh'} / \code{'pvfh'} / \code{'pvfh\_prob'} (Section
+\ref{sec:fourvariants}); all consume the same noisy scan\\
+\code{p\_unknown} & 0.05 & \code{pvfh\_prob} & floor for unobserved sectors
+and max-range drop-cuts: below $\tau$, so unknown space never blocks by
+itself\\
+\code{sense.kind} & \code{'lidar'} & \code{sensor\_noise} & or
+\code{'tof'}: FoV arc of \code{fov\_deg} centred on the body heading (\code{sense.frame = 'body'}; \code{'world'} restores the legacy world-$+x$ fan)\\
+\code{sigma0} & 0.02 m & \code{sensor\_noise} & base range noise; E2 sweeps
+this to 0.40\\
+\code{k\_rng} & 0.03 & \code{sensor\_noise} & tof distance-dependent term:
+$\sigma(d) = \sigma_0 + k_{\mathrm{rng}} d$\\
+\code{max\_range} & $\infty$ & drop-cut & returns at/above it report it and
+are floored at \code{p\_unknown} in P-VFH\\
+\code{seed} & $[]$ / 7 & PRNG & $[]$ $=$ nondeterministic; a fixed seed makes
+a whole experiment reproducible\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Dynamic-obstacle reaction}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}lllp{5.0cm}@{}}
+\toprule
+\textbf{Parameter} & \textbf{Value} & \textbf{Where} & \textbf{Role / why}\\
+\midrule
+\code{pred\_lead} & 0.5 s & predictive scan & horizon; with movers at
+$\le 0.9$ m/s this sees $\sim 0.45$ m of approach early\\
+\code{slow\_margin} & 0.25 m & slowdown & predicted gap below
+$0.25 + r$ starts the speed scale\\
+\code{slow\_min} & 0.4 & slowdown floor & never fully stop --- deadlocks form
+at zero speed\\
+\code{lookahead} & 1.0 s & worst-case gap & horizon of the slowdown metric\\
+\code{avoid\_vel\_frac} & 0.25 & parked filter & movers slower than a quarter
+of $V$ are static obstacles, not traffic\\
+\code{hold\_time} & 1.5 s & escape probe & an escape pose must stay clear
+while movers advance through it\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Convoy (Phase 1)}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}lllp{5.0cm}@{}}
+\toprule
+\textbf{Parameter} & \textbf{Value} & \textbf{Where} & \textbf{Role / why}\\
+\midrule
+\code{convoy\_trigger\_dist} & 2.0 m & grouping & near enough to matter\\
+\code{convoy\_exit\_dist} & 3.0 m & hysteresis & prevents mode chatter at the
+trigger boundary\\
+\code{convoy\_max\_obstacle} & 2.0 m & gate & only compact obstacles (pillars,
+pallets) queue; walls/shelves never\\
+\code{convoy\_min\_group} & 2 & grouping & one robot alone should not switch
+mode\\
+\code{convoy\_spacing} & 1.0 m & trail-follow & single-file gap\\
+\code{tolerance} & 0.3 m & formed? & slot error that declares Phase 1 done\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{keybox}{The one rule about parameters}
+Every value above is part of the \emph{experiment definition}, not an
+implementation detail. A ROS~2 replication that changes any of them is no
+longer measuring the same thing; \code{compare\_runs.m} will happily produce
+numbers for a meaningless comparison. The single source for the ROS~2 side is
+\code{params/swarm.yaml} in the ROS~2 bundle.
+\end{keybox}

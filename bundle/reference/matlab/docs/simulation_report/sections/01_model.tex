@@ -1,0 +1,88 @@
+\section{The model}
+\label{sec:model-kinematics}
+
+\subsection{What kind of model this is}
+
+The simulation is a \textbf{kinematic} model. It contains no forces, masses or
+inertia: every motion constraint is imposed directly on \emph{rates}. A robot
+is a point with a heading; a formation is a rigid geometric body; an obstacle
+is a region of $\mathbb{R}^2$ with an exact signed distance.
+
+\begin{keybox}{State and update (the unicycle model)}
+For every agent (each robot in Phase~1, the formation frame in Phase~2), with
+position $\mathbf{p} = (x, y)$ and heading $\theta$, evaluated at
+$\Delta t = 0.1$~s:
+\begin{align}
+\mathbf{p}_{k+1} &= \mathbf{p}_k + v_k \, \begin{bmatrix}\cos\theta_k \\ \sin\theta_k\end{bmatrix} \Delta t, \\[4pt]
+\theta_{k+1} &= \theta_k + \operatorname{clip}\bigl(\operatorname{wrap}(\theta_{\mathrm{des}} - \theta_k),\; \pm\omega_{\max}\bigr),
+\end{align}
+with the desired heading first low-pass smoothed:
+\[
+\theta_{\mathrm{des}} = \theta_k + \alpha\,\operatorname{wrap}(\theta_{\mathrm{raw}} - \theta_k),
+\qquad \alpha = 0.35 .
+\]
+\end{keybox}
+
+The low-pass on heading is not cosmetic. In Phase~2 the heading \emph{is} the
+payload's orientation; $\alpha = 0.35$ converts the raw obstacle-avoidance
+command (which can zig-zag at the controller rate) into a smooth yaw profile,
+i.e.\ the load is never yanked. The cost is a slightly lazier obstacle
+response, which the prediction layer (Section~\ref{sec:dynamic}) pays for.
+
+Speeds are \emph{prescribed}, not controlled dynamics:
+$v = V = 0.6$~m/s in transport, $v = V_{\mathrm{form}} = 0.5$~m/s in forming,
+both modulated by the proximity logic of Section~\ref{sec:algorithms}.
+Because velocity is a decision variable rather than a state, the model
+integrates exactly --- there is no numerical stiffness, and a MATLAB run and a
+ROS~2 run differ only through tracking error, never through integration error.
+
+\subsection{The world representation: one signed distance to rule them all}
+
+The Gazebo SDF world is parsed into boxes (centre, yaw, half-extents) and
+circles (centre, radius) at the robot's height band
+$z \in [0.03, 0.35]$~m (so the 2~cm goal pad is not an obstacle but the 60~cm
+pallets are). Every geometric question is then answered by a single primitive,
+the \textbf{exact signed distance} $d(\mathbf{p})$ from \code{world\_dist.m}:
+
+\[
+d(\mathbf{p}) =
+\begin{cases}
+>0 & \text{free space (distance to the nearest surface)}\\
+=0 & \text{on a surface}\\
+<0 & \text{inside an obstacle}
+\end{cases}
+\]
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Question} & \textbf{Answer in terms of $d$}\\
+\midrule
+Is this pose in collision? & $d \le 0$\\
+Is this pose safe for a robot of radius $r$? & $d > r$\\
+Clearance metric of the run & $d$ itself, minimised over the body\\
+Raycast for the LiDAR & slab method / quadratic against the same primitives\\
+Feasibility of a corridor & flood fill over a thresholded grid of $d$\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Because the primitive is exact and shared, a ``collision'' in the simulation
+means the same thing a physics engine's contact report would mean --- which is
+what makes the MATLAB and ROS~2 runs comparable at all.
+
+\subsection{Two-phase mission}
+
+\begin{enumerate}[leftmargin=1.6em]
+\item \textbf{Phase 1 --- forming up.} Robots start scattered on a ring of
+radius $2.2$~m around the start point. Each runs its own controller to reach
+an assigned slot. Success: every robot within $0.3$~m of its slot.
+\item \textbf{Phase 2 --- rigid transport.} The formation becomes one rigid
+body: a virtual leader (the frame centre) runs a single controller; the four
+robots are \emph{slaves of the frame}, $\mathbf{p}_i = \mathbf{c} + R(\theta)\,
+\mathbf{o}_i$. The payload is the block spanned by the formation.
+\end{enumerate}
+
+The two phases use the same two algorithms (APF, p-VFH) but \emph{different
+compositions} of them --- cascaded in Phase~1, weighted-sum in Phase~2 --- as
+summarised in Table~\ref{tab:arch}.

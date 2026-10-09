@@ -1,0 +1,77 @@
+% 99_bibliography.tex -- the report's single reference list.
+% Lives at the END of the document (input after the last section).
+% It was moved out of 09_concepts.tex so citations resolve from any
+% chapter and the reference list prints once, as the last page(s).
+
+\phantomsection
+\label{sec:bibliography}
+\addcontentsline{toc}{section}{References}
+
+\begin{thebibliography}{99}
+\bibitem{khatib1986} Khatib, O. (1986). \emph{Real-time obstacle avoidance
+for manipulators and mobile robots}. The International Journal of Robotics
+Research, 5(1).
+\bibitem{koren1991} Koren, Y., Borenstein, J. (1991). \emph{Potential field
+methods and their inherent limitations for mobile robots}. IEEE ICRA.
+\bibitem{borenstein1991} Borenstein, J., Koren, Y. (1991). \emph{The Vector
+Field Histogram---Fast obstacle avoidance for mobile robots}. IEEE
+Transactions on Robotics and Automation, 7(3), 278--288.
+\url{https://ykoren.engin.umich.edu/wp-content/uploads/sites/122/2014/05/1.-The-Vector-Field-Histogram-Fast-Obstacle-Avoidance.pdf}
+\bibitem{ulrich1998} Ulrich, I., Borenstein, J. (1998). \emph{VFH+: Reliable
+obstacle avoidance for fast mobile robots}. IEEE ICRA.
+\bibitem{fox1997} Fox, D., Burgard, W., Thrun, S. (1997). \emph{The dynamic
+window approach to collision avoidance}. IEEE Robotics \& Automation
+Magazine, 4(1), 23--33.
+\bibitem{sezer2012} Sezer, V., G\"okasan, M. (2012). \emph{A novel obstacle
+avoidance algorithm: ``Follow the Gap Method''}. Robotics and Autonomous
+Systems, 60(9), 1123--1134.
+\bibitem{rosmann2017} R\"osmann, C., Hoffmann, F., Bertram, T. (2017).
+\emph{Integrated online trajectory planning and optimization in distinctive
+topologies}. Robotics and Autonomous Systems, 88, 142--153.
+\bibitem{williams2017} Williams, G., et al. (2017). \emph{Information
+theoretic MPC for model-based reinforcement learning}. IEEE ICRA.
+\bibitem{thrun2005} Thrun, S., Burgard, W., Fox, D. (2005). \emph{Probabilistic
+Robotics}. MIT Press. \url{http://probabilistic-robotics.org}
+\bibitem{lynch2017} Lynch, K., Park, F. (2017). \emph{Modern Robotics}.
+Cambridge University Press, \S10.6.
+\url{https://modernrobotics.northwestern.edu/nu-gm-book-resource/10-6-virtual-potential-fields/}
+\bibitem{owen2019} Owen, A. (2019, ongoing). \emph{Monte Carlo theory,
+methods and examples}. Free manuscript.
+\url{https://artowen.su.domains/mc/}
+\bibitem{mwvfh} MathWorks (2024). \emph{Vector Field Histogram} (Navigation
+Toolbox).
+\url{https://www.mathworks.com/help/nav/ug/vector-field-histograms.html}
+\bibitem{vfhwiki} Wikipedia (2025). \emph{Vector Field Histogram}.
+\url{https://en.wikipedia.org/wiki/Vector_Field_Histogram}
+\bibitem{utkvfh} Lee Parker, L. (2008). \emph{Obstacle avoidance: sonar, bug
+algorithms and VFH+} (lecture notes).
+\url{https://web.eecs.utk.edu/~leparker/Courses/CS594-fall08/Lectures/Oct-23-ObstAvoid-II+Architectures.pdf}
+\bibitem{stvl53} STMicroelectronics (2024). \emph{VL53L5CX 8x8 multizone
+ranging sensor}.
+\url{https://www.st.com/en/imaging-and-photonics-solutions/vl53l5cx.html}
+\bibitem{tfluna} Seeed Studio (2024). \emph{TF-Luna LiDAR (ToF) module wiki}.
+\url{https://wiki.seeedstudio.com/TF-Luna-Introduction/}
+\bibitem{lynchvideo} \emph{Modern Robotics, Chapter 10.6: Virtual Potential
+Fields} (video, Northwestern University, Kevin Lynch).
+\url{https://www.youtube.com/watch?v=8Vva0bnMIEI}
+\bibitem{vfhvideo} \emph{Obstacle avoidance: sonar, bug algorithms and the
+Vector Field Histogram} (video lecture).
+\url{https://www.youtube.com/watch?v=O2EIc7wrfgQ}
+\bibitem{vfhvideo2} \emph{Vector Field Histogram} (video explainer).
+\url{https://www.youtube.com/watch?v=X0nokJwoivQ}
+\bibitem{stachnissbayes} Stachniss, C. \emph{SLAM course, lecture 3: Bayes
+filter} (video, University of Freiburg).
+\url{https://www.youtube.com/watch?v=5Pu558YtjYM}
+\bibitem{stachnissgrid} Stachniss, C. \emph{Occupancy grid maps} (video, 5
+Minutes with Cyrill, University of Bonn). \url{https://youtu.be/v-Rm9TUG9LA}
+\bibitem{bruntonmc} Brunton, S. \emph{Monte Carlo sampling and bootstrapping
+in Bayesian inference} (video, University of Washington).
+\url{https://www.youtube.com/watch?v=f1Vcc-bPfnU}
+\bibitem{bruntoncrude} \emph{Crude Monte Carlo} (video, short course on rare
+event simulation). \url{https://www.youtube.com/watch?v=YLOZ3eb7pqU}
+\end{thebibliography}
+
+\noindent Note on the bibliography: video links are given inline rather than
+as formal citations; if a link rots, the search phrases in each title
+(``Modern Robotics 10.6'', ``Stachniss Bayes filter'', ``Steve Brunton Monte
+Carlo'') rediscover the same lectures.

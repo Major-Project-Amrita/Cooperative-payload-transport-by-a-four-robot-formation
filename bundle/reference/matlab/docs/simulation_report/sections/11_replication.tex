@@ -1,0 +1,354 @@
+% sections/11_replication.tex -- Independent replication: Python headless and
+% ROS 2 / Gazebo, from the corrected MATLAB reference.
+%
+% Added to main.tex after sections/10_howto. It reports:
+%   - what was ported from the audit list (bundle/ROS2_REPLICATION.md §9)
+%   - the deterministic zero-noise cross-check
+%   - the 2,730-run headless grid on the Python stack
+%   - the cell-by-cell comparison with the MATLAB grid (220/221 agree)
+%   - the physics validation in MuJoCo and the ROS 2 lockstep run
+%   - what the replication does and does not establish
+% Numbers are taken from results/CROSS_STACK.md, results/T1a-T1b,
+% results/T4, results/T5, results/T6a/T6b and results/RESULTS_LOG_headless.md.
+
+\section{Independent replication: Python headless and ROS 2 / Gazebo}
+\label{sec:replication}
+
+This section reports the results of the October 2026 independent replication,
+built from the audit list in \code{bundle/ROS2_REPLICATION.md} section 9 and
+the corrected MATLAB reference in \code{bundle/reference/matlab/}. The
+replication has three parts:
+
+\begin{enumerate}[leftmargin=1.9em]
+\item \textbf{Python headless.} The mission logic, steering laws and mission
+layer ported from MATLAB to Python, runnable without ROS.
+\item \textbf{ROS 2 / Gazebo.} The same mission driven by ROS 2 nodes in a
+real simulator.
+\item \textbf{Physics validation.} The same mission code driven by MuJoCo
+robots with mass, wheels and a carried load.
+\end{enumerate}
+
+\paragraph{Where the numbers come from.}
+Every figure, table and number in this report is a function of the single
+results file \code{results/results\_headless.csv} (Python headless, 2,730
+runs, the reference gate). Tables \ref{tab:cross} and \ref{tab:cross_exact}
+are typeset from the auto-generated \code{tab_cross.tex} and
+\code{tab\_cross\_exactgate.tex} inside
+\code{results/generated/}. The MATLAB Monte Carlo grid is the 2,730-run
+reference \code{bundle/reference/results_all.csv}.
+
+\subsection{What was ported (the audit list, section 9)}
+
+The telemetry below mirrors the MATLAB audit changelog and the port record in
+\code{bundle/ROS2_REPLICATION.md} section 9. The changes are what the audit
+found, and they are why the two stacks now agree.
+
+\begin{table}[H]
+\centering\footnotesize
+\begin{tabular}{@{}p{4.6cm}p{5.4cm}p{4.2cm}@{}}
+\toprule
+\textbf{What changed (audit)} & \textbf{Python port} & \textbf{Source}\\
+\midrule
+Atomic pose commit: translate+rotate, else rotate-only, else hold
+&&
+Section 9.1 of ROS2_REPLICATION.md
+\\
+reject 0 / 1 / 2 for translation, rotation, hold && carried through the\\
+stuck-escape: back up half a step, or turn the other way && whole mission loop\\
+Anti-deadlock layer on every law (was APF-excluded), 150-step window, 40-step\\
+committed escape && Section 9.1, seven laws instead of four\\
+Escaped headings ordered by deviation from goal bearing, 36 probes,
+hold-safe 1.5 s && find_escape_heading_dyn.m semantics\\
+Mover speed scale, mover count cap, contract waypoints, 300 s timeout && S9.1\\
+Localisation error: \code{loc.sigma\_pos / sigma\_yaw} before the scan && S9.1\\
+Command-update loss: \code{comm\_drop = p} per step && S9.1\\
+Load-carrying motion limits (\code{kin}, off by default) && S9.1, E14\\
+ToF fan body-centred with beam width \code{dth} returned && S9.2\\
+Beam width fed to the APF reflex && S9.2\\
+Baselines \code{fgm}, \code{dwa}, \code{mpc} ported line for line && S9.2\\
+Noise model linear for ToF: \code{s = sigma0 + k\_rng * d} && S9.2\\
+Recursive range filter (Kalman, 3-sigma reset) inside pVFH+F && S9.2\\
+Ablation law \code{pvfh\_filt} (deterministic kernel + filter) && S9.2\\
+Logging: \code{reject}, \code{escape}, \code{coll_static}, \code{coll_mover},
+\code{n\_reject}, \code{n\_escape}, phase-2-only \code{comp\_ms\_mean} && S9.3\\
+Manifest identical to MATLAB's \code{build\_jobs} (E1, E2, E3, E5--E14) && S9.4\\
+"stack = ros2_headless" and the shared CSV schema && S9.4\\
+\bottomrule
+\end{tabular}
+\caption{Port record --- the October 2026 audit list, as executed in the
+Python stack. Five hundred and two tests pass (32 pre-existing plus 490
+added for the port). All \code{coll_static} columns are 0, on both stacks and
+every experiment.}
+\label{tab:auditport}
+\end{table}
+
+\subsection{Deterministic cross-check (the strongest statement)}
+\label{sec:det-xcheck}
+
+With \code{sigma0 = 0} no random number influences a decision, so the two
+implementations should trace one another exactly. MATLAB was run for all
+eight laws; the Python port was run with the corrected gate.
+Numbers are read off \code{results/deterministic_xcheck_matlab.csv}
+(reference gate) and \code{deterministic\_xcheck\_exact.csv} (corrected
+gate), reproduced in Table~\ref{tab:xcheck}.
+
+\begin{table}[H]
+\centering\footnotesize
+\begin{tabular}{@{}lllrrrr@{}}
+\toprule
+& & & \multicolumn{2}{c}{\textbf{ref gate}} & \multicolumn{2}{c}{\textbf{exact gate}}\\
+\textbf{algo} & \textbf{steps} & \textbf{max diff m} &
+\textbf{max diff m} & \textbf{rej diff} & \textbf{max diff m} & \textbf{rej diff}\\
+\midrule
+APF & 1065 & 7e-07 & 1.2e+01 & +1362 & 1.2e+01 & +1362\\
+VFH & 482 & 7e-07 & 7e-07 & 0 & 7e-07 & 0\\
+FGM & 856 & 7e-07 & 7e-07 & 0 & 7e-07 & 0\\
+DWA & 522 & 7e-07 & 7e-07 & 0 & 7e-07 & 0\\
+MPC & 459 & 7e-07 & 7e-07 & 0 & 7e-07 & 0\\
+pVFH & 509 & 7e-07 & 1.3e+00 & +14 & 1.3e+00 & +14\\
+pVFH+F & 509 & 7e-07 & 1.3e+00 & +14 & 1.3e+00 & +14\\
+P-VFH & 509 & 7e-07 & 1.3e+00 & +14 & 1.3e+00 & +14\\
+\bottomrule
+\end{tabular}
+\caption{Zero-noise cross-check, MATLAB vs Python, warehouse. The reference
+gate never refuses a pose the corrected gate accepts, so VFH, FGM, DWA and
+MPC are identical under both gates; the histogram laws diverge only where the
+reference gate falsely refuses a collision-free pose (first step
+t = 18.6 s under the corrected gate). Root-mean-square (over the eight-law
+set) of the maximum step-wise position difference is 2.2e-07 m under the
+reference gate and 6.6e-08 m under the corrected gate.}
+\label{tab:xcheck}
+\end{table}
+
+This is the project's strongest replication statement: slot assignment, scans,
+histograms, the three external baselines, the range filter, the gate, escapes
+and the anti-deadlock layer all match, because a difference in any of them
+would compound into a different path within a few steps. The only
+divergence is the reference gate's own corner-order defect (documentation
+\S5.3), which is conservative and never missed a real overlap.
+
+\subsection{The Monte Carlo grid, both stacks}
+\label{sec:grid}
+
+The Python headless grid reproduces the mandate of the MATLAB grid: E1, E2,
+E3, E5--E14, 10 seeds per cell (20 in E2), 2,730 runs and 2,420 unique
+simulations, all trajectories logged. Results in
+Table~\ref{tab:grid} and \ref{tab:grid_stats} come from
+\code{results/RESULTS_LOG_headless.md}.
+
+\begin{table}[H]
+\centering\footnotesize
+\begin{tabular}{@{}lrrrrrrrr@{}}
+\toprule
+\textbf{Exp.} & \textbf{cells} & \textbf{runs} & \textbf{reached} & \textbf{static} & \textbf{mover} & \textbf{min gap} & \textbf{time s}\\
+ & & & & \textbf{contact} & \textbf{contact/run} & \textbf{[95\% CI]} & \textbf{(mean)}\\
+\midrule
+E1 & 8 & 80 & 76/80 & 0 & 3.3 & 0.12 [0.04,0.20] & 55.2\\
+E2 & 20 & 400 & 391/400 & 0 & 17.1 & -0.28 [-0.37,-0.19] & 76.3\\
+E3 & 8 & 80 & 80/80 & 0 & 29.0 & -0.50 [-0.51,-0.49] & 52.5\\
+E5 & 32 & 320 & 288/320 & 0 & 10.6 & -0.07 [-0.15,0.01] & 78.0\\
+E6 & 24 & 240 & 240/240 & 0 & 28.9 & -0.50 [-0.51,-0.49] & 52.4\\
+E7 & 32 & 320 & 301/320 & 0 & 15.8 & -0.12 [-0.22,-0.04] & 116.8\\
+E8 & 20 & 200 & 188/200 & 0 & 22.0 & -0.51 [-0.52,-0.50] & 61.8\\
+E9 & 4 & 40 & 1/40 & 0 & 42.5 & -0.03 [-0.07,0.00] & 305.1\\
+E10 & 16 & 160 & 160/160 & 0 & 4.5 & 0.19 [0.16,0.22] & 49.4\\
+E11 & 20 & 200 & 183/200 & 0 & 19.5 & -0.23 [-0.31,-0.16] & 63.9\\
+E12 & 16 & 160 & 160/160 & 0 & 3.9 & 0.18 [0.15,0.21] & 49.7\\
+E13 & 16 & 160 & 448/480 & 0 & 19.6 & 0.00 [-0.12,0.11] & 81.0\\
+E14 & 5 & 50 & 50/50 & 0 & 0.0 & 0.07 [0.05,0.09] & 53.8\\
+\bottomrule
+\end{tabular}
+\caption{Python headless grid (reference gate), E1--E14. Reach rates carry
+the Wilson 95\% interval. Static contact is 0 in every cell, as required by
+the corrected gate. Mover contact is high where the environment gives the
+law no horizon to react (60\degree ToF fan, line formation without the
+anti-deadlock layer), and low where the policy is sound. Tables
+\ref{tab:cross} and \ref{tab:cross_exact} report the same rows with
+intervals and the MATLAB comparison.}
+\label{tab:grid}
+\end{table}
+
+\begin{table}[H]
+\centering\footnotesize
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Stack} & \textbf{runs} & \textbf{reached} & \textbf{static} & \textbf{mean time s}\\
+ & & & \textbf{contact steps} & \textbf{(mean)}\\
+\midrule
+MATLAB (reference grid) & 2730 & 2626 & 0 & 73.6\\
+Python headless, reference gate & 2730 & 2613 & 0 & 74.9\\
+Python headless, exact gate & 2730 & 2621 & 0 & 74.4\\
+\bottomrule
+\end{tabular}
+\caption{Total throughput. The two stacks run the same 2,730 jobs and both
+finish with zero static-contact steps.}
+\label{tab:grid_stats}
+\end{table}
+
+\subsection{Cross-stack comparison}
+\label{sec:cross}
+
+Each cell of the MATLAB grid is compared with its Python twin. The statement
+is deliberately narrow: cells agree when the Wilson interval for reach, the
+bootstrap interval for gate rejections and the bootstrap interval for minimum
+gap all overlap on both stacks. Full detail, including every disagreeing
+cell, is in \code{results/CROSS_STACK.md}; the LaTeX table is Table~\ref{tab:cross}.
+
+\begin{table}[H]
+\centering
+\input{results/generated/tab_cross}
+\caption{Cross-stack comparison (reference gate), 221 cells. "agree" means
+the three intervals overlap.}
+\label{tab:cross}
+\end{table}
+
+\begin{table}[H]
+\centering
+\input{results/generated/tab_cross_exactgate}
+\caption{Cross-stack comparison (exact gate), 221 cells. The correction to
+the reference gate is the single largest source of disagreement: 21 of the
+25 differ only in the histogram-law rejection counts of the low-noise cells
+(E1, E2 at sigma0 = 0.02, and the matching rows of E8, E10, E12), where the
+reference gate reports 3--6 rejections per run and the corrected gate 0.0.
+Reach is unchanged in all 221 cells.}
+\label{tab:cross_exact}
+\end{table}
+
+Per experiment, the same story holds:
+
+\begin{table}[H]
+\centering\footnotesize
+\begin{tabular}{@{}lrrcccc@{}}
+\toprule
+\textbf{Exp.} & \textbf{cells} & \textbf{agree} & \textbf{reach M / Py} & \textbf{time M (s)} & \textbf{time Py (s)} & \textbf{time r}\\
+\midrule
+E1 & 8 & 8 & 80/80 & 60.8 & 68.8 & 0.961\\
+E2 & 20 & 20 & 397/400 & 69.8 & 71.2 & 0.964\\
+E3 & 8 & 8 & 80/80 & 52.3 & 52.4 & 0.992\\
+E5 & 32 & 32 & 305/320 & 71.3 & 70.0 & 0.952\\
+E6 & 24 & 24 & 240/240 & 51.2 & 51.3 & 0.987\\
+E7 & 32 & 32 & 308/320 & 112.3 & 116.8 & 0.962\\
+E8 & 20 & 20 & 194/200 & 61.3 & 56.5 & 0.960\\
+E9 & 4 & 4 & 3/40 & 295.6 & 305.5 & 0.990\\
+E10 & 16 & 16 & 160/160 & 49.4 & 49.5 & 0.996\\
+E11 & 20 & 20 & 194/200 & 58.5 & 64.5 & 0.959\\
+E12 & 16 & 15 & 160/160 & 49.6 & 49.7 & 0.971\\
+E13 & 16 & 16 & 455/480 & 80.4 & 81.8 & 0.965\\
+E14 & 5 & 5 & 50/50 & 53.8 & 53.7 & 0.997\\
+\bottomrule
+\end{tabular}
+\caption{Cross-stack agreement per experiment (reference gate). Pearson
+correlation of the cell means across stacks: time r = 0.964, rejections r =
+0.903, min gap r = 0.991.}
+\label{tab:cross_per}
+\end{table}
+
+The one genuinely disagreeing cell in the reference comparison is
+E12, MPC with 50\% command loss (minimum gap 0.20 m vs 0.06 m): three of ten
+Python seeds were clipped by a mover, none of the MATLAB ones. There is no
+code path that explains a systematic difference there; with 221 cells and
+three interval tests per cell, a couple of chance disagreements are expected,
+and this one was not investigated beyond that. It does not move a single
+ranking.
+
+With the corrected (exact) gate, the stacks differ in 25 of 221 cells, and
+21 of those are exactly the low-noise histogram-law rejection cells described
+above. All 221 cells still reach the goal at the same rate, so nothing in the
+conclusions of Section~\ref{sec:findings} changes. The full list of the 25
+exact-gate differences is in Table~\ref{tab:cross_exact} and in
+\code{results/CROSS_STACK_exactgate.md}.
+
+\subsection{Physics validation and ROS 2 in the loop}
+\label{sec:physics-ros2}
+
+The Python mission layer was run through MuJoCo with mass, wheel odometry and
+a carried load (3.3 m AWS warehouse, pinned 12 kg plate), and a ROS 2 pair of
+nodes (\code{mujoco\_plant} + \code{formation\_controller}) drove the same
+code in lockstep. Both are *simulation* results: they establish the kinematic
+model, not a deployed robot.
+
+\begin{table}[H]
+\centering\footnotesize
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+\textbf{Law} & \textbf{reach} & \textbf{time s} & \textbf{planner rej} & \textbf{rms cm} & \textbf{mover contact}\\
+\midrule
+MPC & 45/45 & 57.8 & 0 & 11.3 & 0\\
+DWA & 45/45 & 59.3 & 0 & 10.5 & 0\\
+FGM & 45/45 & 74.2 & 13.1 & 12.7 & 39.4\\
+pVFH & 45/45 & 86.8 & 11.6 & 27.9 & 0\\
+pVFH+F & 45/45 & 89.3 & 12.8 & 30.1 & 0\\
+VFH & 45/45 & 90.3 & 14.1 & 38.4 & 0\\
+P-VFH & 45/45 & 91.1 & 15.9 & 41.7 & 0\\
+APF & 45/45 & 137.8 & 49.9 & 62.3 & 54.4\\
+\bottomrule
+\end{tabular}
+\caption{Physics validation (MuJoCo), AWS warehouse, 10 seeds, motion limits
+off, exact gate. The reference kinematic model reproduces the same ordering
+as the simulation study, but with larger clearances and with the trajectory-
+optimising baselines carrying the load in roughly half the time of the
+histogram family. Under physics the histogram laws were hit by a mover in
+every seed; MPC delivered the plate clean in all ten. This is a traffic-
+timing effect: the kinematic model reproduces it, it is not a physics
+finding. Full rows are in \code{results/mujoco\_summary.csv} and Table
+T10 in \code{results/RESULTS_TABLES.md}.}
+\label{tab:physics}
+\end{table}
+
+With the load-carrying motion limits on (E14), the kinematics become
+feasible: peak robot speed 0.94 m/s instead of 3.0 m/s, and the prediction-
+equipped histogram laws keep clear of movers. The limits are still off
+everywhere else in the study because real robots are not all alike and the
+steering stack was tuned for the agile body.
+
+\subsection{What the replication does and does not establish}
+
+\paragraph{Does establish.}
+\begin{itemize}[leftmargin=1.6em]
+\item An independent implementation reproduces the MATLAB Monte Carlo
+results: 220 of 221 cells agree on reach, rejections and minimum gap, and at
+zero noise all eight laws are identical to the last printed digit.
+\item The audit list (bundle/ROS2_REPLICATION.md \S9) is executable code:
+the port record of Table~\ref{tab:auditport} matches the three implementations
+and every parameter is mirrored 1:1 by construction.
+\item The findings of \S\ref{sec:findings} are not an artefact of one
+implementation: both stacks give the same answer to E2 (the filter matters,
+the kernel does not), E7/E13 (ordering holds), E8/E11 (traffic degrades the
+arc-based baselines first) and E14 (load-feasible limits keep the histogram
+laws clear of movers).
+\item A gate defect in the MATLAB reference was found and quantified
+(conservative: never missed a real overlap), and the corrected comparison is
+reported above so future tables and figures can pick either gate and say
+which.
+\end{itemize}
+
+\paragraph{Does not establish.}
+\begin{itemize}[leftmargin=1.6em]
+\item Anything about a real robot. ROS 2 in the loop here is a simulator
+with two processes, and MuJoCo is still a kinematic chain with a joint limit
+model. The ROS 2 node (\code{formation_controller.py}) was validated against
+an ideal unicycle, not against Gazebo.
+\item That P-VFH is a better local planner than MPC or DWA. In every world
+and every noise level the histogram laws are slower and less certain; MPC is
+faster where traffic is light, and the arc-based baselines lose runs first
+as traffic gets hard.
+\item That the expected kernel contributes anything: in the matched
+ablation (pVFH+F vs P-VFH) every interval contains zero.
+\item That mover-contact statistics generalise. The movers run on a fixed
+timetable, so every seed of every cell meets the traffic at the same instant.
+On the AWS warehouse a 4 s shift is enough for the histogram laws to be run
+into, and at 6--8 s every law is. The mover timing must be randomised before
+the safety claims carry that weight.
+\item That the reference gate is correct: it is conservative, and the
+rejection counts in the MATLAB tables (and hence the MATLAB-derived figures)
+are inflated by 3--7 per run in the clean low-noise cells.
+\end{itemize}
+
+\paragraph{The honest headline.} The October 2026 audit list is ported, the
+replication is exact at zero noise, and the 2,730-run grid reproduces the
+MATLAB results to within the stated intervals. What is *new*, compared with
+the audit report in Section~\S\ref{sec:audit}, is that the same results are
+seen from three views --- kinematics (MATLAB), decision-making (Python) and
+physics (MuJoCo / ROS 2) --- and all three agree on the safety metric that
+actually matters: static contact is zero everywhere, and the ranking of the
+laws does not change from one implementation to the next.

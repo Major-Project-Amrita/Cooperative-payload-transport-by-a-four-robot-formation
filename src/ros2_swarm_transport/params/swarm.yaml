@@ -1,0 +1,39 @@
+# Single source for every parameter that must match the MATLAB side.
+# ROS2_REPLICATION.md section 5 is the human-readable contract.
+formation_controller:
+  ros__parameters:
+    # Mission constants (dt, V, turn limits, gains, anti-deadlock window ...)
+    # live in ros2_swarm_transport/transport.py::DEFAULTS, the one place the
+    # headless runner, the MuJoCo validation and this node read them from.
+    world_sdf: swarm_world_dynamic.sdf
+    contract: dynamic_obstacles.json    # movers (+ optional waypoints/start)
+    formation: square                   # square | diamond | triangle | line
+    grid_spacing: 1.18
+    robot_radius: 0.18
+    #   algo: apf | vfh | fgm | dwa | mpc | pvfh | pvfh_filt | pvfh_prob
+    algo: pvfh_prob
+    seed: 0
+    n_beams: 288
+    sense_kind: lidar                   # lidar | tof (body-frame fan)
+    sense_sigma0: 0.02
+    sense_k_rng: 0.03
+    sense_fov_deg: 60.0
+    sense_max_range: .inf
+    kin: true                           # load-carrying motion limits
+    adl: true                           # anti-deadlock layer
+    gate: exact                         # exact | matlab (bug-compatible)
+    robots: [robot1, robot2, robot3, robot4]
+
+mover_node:
+  ros__parameters:
+    contract: dynamic_obstacles.json
+    rate: 10.0
+    use_gz: false             # true -> teleport models in gz sim
+    gz_world: default
+
+swarm_logger:
+  ros__parameters:
+    robots: [robot1, robot2, robot3, robot4]
+    goal: [12.0, 0.0]
+    output: logs/ros2_dynamic.csv
+    rate: 10.0

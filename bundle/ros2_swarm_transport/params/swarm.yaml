@@ -1,0 +1,57 @@
+# Single source for every parameter that must match the MATLAB side.
+# ROS2_REPLICATION.md section 5 is the human-readable contract.
+formation_controller:
+  ros__parameters:
+    world_sdf: swarm_world_dynamic.sdf
+    contract: dynamic_obstacles.json
+    dt: 0.1
+    goal: [12.0, 0.0]
+    start: [-12.0, 0.0]
+    grid_size: 2
+    grid_spacing: 1.18        # use the value the MATLAB run prints
+    robot_radius: 0.18
+    V: 0.6
+    forming_V: 0.5
+    max_turn_rate: 0.3
+    forming_max_turn_rate: 0.5
+    heading_smooth_alpha: 0.35
+    w_goal: 1.0
+    w_vfh: 2.0
+    forming_tolerance: 0.3
+    forming_w_slot: 2.0
+    forming_w_repulse: 1.5
+    forming_repulse_dist: 1.2
+    forming_slow_radius: 1.5
+    slow_margin: 0.25
+    slow_min: 0.4
+    hold_time: 1.5
+    lookahead: 1.0
+    avoid_vel_frac: 0.25
+    pred_lead: 0.5
+    pred_dt: 0.1
+    n_beams: 288
+    # --- algorithm variant + sensing model (the paper's comparison axis) ---
+    #   algo: 'apf' | 'vfh' | 'pvfh' | 'pvfh_prob'
+    #   sense_kind: 'lidar' (dense 360 deg) | 'tof' (sparse arc, range-dependent
+    #               noise). Every variant consumes the SAME noisy scan.
+    algo: pvfh
+    sense_kind: lidar
+    sense_sigma0: 0.02
+    sense_k_rng: 0.03
+    sense_fov_deg: 60.0
+    sense_max_range: .inf
+    robots: [robot1, robot2, robot3, robot4]
+
+mover_node:
+  ros__parameters:
+    contract: dynamic_obstacles.json
+    rate: 10.0
+    use_gz: false             # true -> teleport models in gz sim
+    gz_world: default
+
+swarm_logger:
+  ros__parameters:
+    robots: [robot1, robot2, robot3, robot4]
+    goal: [12.0, 0.0]
+    output: logs/ros2_dynamic.csv
+    rate: 10.0

@@ -1,0 +1,187 @@
+\section{Results and reproduction}
+
+\subsection{Verified run (dynamic world)}
+
+\begin{table}[h]
+\centering
+\footnotesize
+\begin{tabular}{@{}lrl@{}}
+\toprule
+\textbf{Metric} & \textbf{Value} & \textbf{Reading}\\\midrule
+Goal reached & yes & centroid within 0.5 m\\
+Total sim time & 47.8 s & 5.3 s forming + 42.5 s transport\\
+Path length & 25.33 m & vs. 24 m straight-line centre path\\
+Path efficiency & 0.93 & local avoidance only, no wandering\\
+Min formation clearance & 0.51 m & statics + movers, payload block incl.\\
+Mean clearance & 1.04 m & healthy margin through the chicane\\
+Collision steps & \textbf{0} & at any point of the run\\
+Total turning & 12.0 rad & payload rotation budget\\
+Min mover gap (instant) & 1.22 m & closest pass to a forklift\\
+Min mover gap (predicted) & 0.33 m & absorbed by slowdown + VFH\\
+Time in slowdown & 1.4\% & only near the movers\\
+\bottomrule
+\end{tabular}
+\caption{Summary of \code{logs/matlab_dynamic.csv}: one reference run recorded
+\emph{before} the October 2026 audit (\S\ref{sec:audit}). Re-run
+\code{Simulation8_dynamic} to refresh it; the Monte Carlo tables of
+\S\ref{sec:experiments} are authoritative.}
+\end{table}
+
+The static-world regression (\code{Simulation7_sdf}, medium world, same
+gains) is unchanged: reached, efficiency 0.95, 0 collisions, min clearance
+0.51 m. The dynamic layer is therefore free when nothing moves --- it only
+spends computation and a little speed near actual movers.
+
+\subsection{Reproducing}
+
+\begin{enumerate}[leftmargin=1.9em]
+\item \texttt{cd matlab \&\& matlab -batch "CFG_OVERRIDE = ... Simulation8\_dynamic;"}
+(or open MATLAB there and run the script; visual mode is on by default).
+\item \texttt{make\_figures} regenerates every figure in this report from the
+log.
+\item For the two-world static comparison: \code{run\_experiments.m}, then
+follow \code{README\_MATLAB.md} for the ROS~2 protocol.
+\end{enumerate}
+
+\subsection{Known limitations}
+
+\begin{itemize}[leftmargin=1.6em]
+\item No dynamics: acceleration is instantaneous; real bases will smooth
+corners slightly (ROS~2 \code{formation\_rms} absorbs the difference).
+\item Movers are kinematic: they never yield, never push the payload, and
+follow the contract exactly.
+\item 2D slice at $z \in [0.03, 0.35]$~m: overhangs are invisible by design.
+\item The convoy logic only anchors on static compact obstacles.
+\item Phase-1 APF can in principle stall in a concave pocket; the stuck
+escape handles it empirically (5-step trigger), not provably.
+\item Every grid in Section~\ref{sec:experiments} uses fixed obstacle
+geometry per world (three hand-designed worlds); randomised layouts are
+future work.
+\item The safety gate uses ground-truth geometry and the scan is taken from
+the formation centroid (\S\ref{sec:experiments}, threats to validity).
+\end{itemize}
+
+\subsection{File map}
+
+\begin{table}[h]
+\centering
+\footnotesize
+\begin{tabular}{@{}p{4.6cm}p{9.6cm}@{}}
+\toprule
+\textbf{File} & \textbf{Purpose}\\\midrule
+\code{Simulation7\_sdf.m} & static-world mission (reference implementation)\\
+\code{Simulation8\_dynamic.m} & dynamic-obstacle mission (this report)\\
+\code{sdf2world.m} / \code{world\_dist.m} & SDF $\to$ map; exact signed
+distance\\
+\code{lidar\_scan.m} / \code{lidar\_scan\_dyn.m} & analytic scans (static /
+$+$movers)\\
+\code{apf\_force.m} / \code{pvfh\_scan.m} & APF; deterministic p-VFH\\
+\code{pvfh\_predict.m} & predictive VFH (movers over the horizon)\\
+\code{pvfh\_prob.m} & P-VFH proposal (probabilistic occupancy + APF reflex)\\
+\code{sensor\_noise.m} & shared range-noise model (lidar / tof)\\
+\code{scan\_ranges\_dyn.m} & shared clean scan (statics + predictive movers)\\
+\code{steering\_dispatch.m} & the four-variant algorithm dispatch (Octave-safe)\\
+\code{formation\_clearance.m} / \code{\_dyn.m} & whole-body collision, payload
+SAT\\
+\code{find\_escape\_heading\_*.m} & escape probes (static / hold-vs-movers)\\
+\code{eval\_mover\_pose.m} & the motion contract, single source of truth\\
+\code{load\_dynamic\_obstacles.m} / \code{update\_world\_dyn.m} /
+\code{merge\_dyn.m} & contract loading, pose update, geometry merge\\
+\code{world\_feasibility.m} / \code{obstacle\_extents.m} & corridor
+bottleneck; convoy gate\\
+\code{run\_experiments.m} / \code{compare\_runs.m} & batch driver; MATLAB vs
+ROS~2 metrics\\
+\code{steering\_dispatch.m} & the eight-law dispatch, incl.\ the FGM, MPC and
+Dynamic-Window baselines\\
+\code{range\_filter.m} & per-beam recursive Bayesian range filter (P-VFH,
+\code{pvfh\_filt})\\
+\code{contract\_waypoints.m} & optional global route stored in a contract\\
+\code{swarm\_world\_plaza.sdf}, \code{swarm\_world\_maze.sdf} (+ contracts) &
+the E7 environments\\
+\code{make\_random\_worlds.py}, \code{swarm\_world\_randNN.sdf} & seeded
+generator and the ten E13 layouts; \code{dynamic\_obstacles\_dense.json} is
+the six-mover E11 contract\\
+\code{run\_paper\_experiments.m} & E1--E14 Monte Carlo driver: manifest,
+shards, per-run checkpointing, merge\\
+\code{run\_grid\_parallel.sh} & launches the shards and the merge\\
+\code{make\_paper\_figures.py} & every evaluation figure, every table, the
+provenance banner and \code{RESULTS\_LOG.md} from the one results file\\
+\code{run\_headless\_grid.py} & legacy grid on the Python port (pre-audit
+behaviour; not used by this report)\\
+\code{make\_figures.m} & the single-run illustrative figures\\
+\code{simulation\_report/11\_replication.tex} & this report's independent
+replication section (Python headless, ROS 2 / Gazebo, MuJoCo)\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% --- Replication context (points to sections/11_replication.tex, which is
+% actually input after 10_howto) ---
+\subsection{Towards a publishable claim: what is done, and what is next}
+\label{sec:roadmap}
+
+\paragraph{State after the October 2026 audit.} The audit
+(\S\ref{sec:audit}) found defects in the reference code that invalidate the
+earlier headline numbers, fixed them, and rebuilt the evaluation so that it
+cannot drift from its data again. The simulation-side items of the earlier
+roadmap are implemented; whether they \emph{support} the claim is decided
+by the corrected grid, not by this section. Both the matrix above and the
+replication record of Section~\ref{sec:replication} were updated in the same
+sweep.
+
+\begin{table}[H]
+\centering\footnotesize
+\begin{tabular}{@{}p{4.2cm}p{2.2cm}p{7.6cm}@{}}
+\toprule
+\textbf{Roadmap item} & \textbf{Status} & \textbf{What exists / what is missing}\\\midrule
+1. Modern baselines & done (simulation) & Follow-the-Gap, a Dynamic-Window
+planner and a receding-horizon lattice MPC at the same interface (E1, E5,
+E7, E8, E10--E13). Not a tuned navigation-stack TEB/MPPI.\\
+2. Further environments & done (simulation) & Plaza and maze (E7) and ten
+randomly generated layouts (E13).\\
+3. Hardware pilot & not started & Cannot be done in software.\\
+4. Statistical depth & done & 10 seeds per cell, 20 in E2; Wilson and
+bootstrap intervals; paired Wilcoxon and McNemar tests
+(Table~\ref{tab:stats}).\\
+5. Theory & done & Propositions 1--2 with proofs and the cost statement
+(\S\ref{sec:pvfh}); the incorrect monotonicity claim is withdrawn.\\
+6. Extras & done (simulation) & Traffic speed (E8), traffic density (E11),
+localisation error (E10), command-update loss (E12), anti-deadlock
+ablation (E9). Simple perturbation models (white noise, independent
+losses).\\
+Independent replication & done (3 stacks) & Python headless 2,730 runs;
+ROS 2 / Gazebo nodes; MuJoCo physics. 220/221 cells agree with MATLAB,
+zero static contact everywhere. Section~\ref{sec:replication}.\\
+\bottomrule
+\end{tabular}
+\caption{Roadmap status, updated to include the independent replication.}
+\end{table}
+
+\paragraph{Is this enough for an A-rank conference or a Q1 journal?} No,
+and the grid says why (\S\ref{sec:findings}). The idea the project set
+out to establish --- a probabilistic occupancy kernel for VFH --- does not
+show a benefit when tested against a baseline that differs only in the
+kernel. What does work is a recursive range filter driven by the sensor's
+noise model; that is a sound engineering result, but filtering a scan
+before a histogram is established practice, so on its own it is not a
+novel algorithmic contribution. What the work does have is a careful,
+reproducible evaluation: an ablation ladder, external baselines at equal
+information, thirteen environments, paired statistics, and an honest
+account of two implementation defects that had manufactured the original
+headline. As it stands this supports a workshop paper, a regional or
+application-track conference paper, or a strong project report, written
+around the filter result, the negative result on the kernel, and the
+traffic-robustness comparison with the MPC baseline. Reaching an A-rank
+venue would need a new idea that the evaluation then supports --- for
+example a sector fusion that is probabilistic in a way a max over beams
+is not, or a histogram law that matches the MPC baseline in open space
+while keeping its robustness to traffic --- plus hardware.
+
+\paragraph{Next steps, in order.} (1) Decide what the paper claims, in the
+light of \S\ref{sec:findings}. (2) Rerun the MATLAB grid with the corrected
+gate (two corner orders in \code{formation\_clearance\_dyn.m}) and regenerate
+the reference tables; this makes the two stacks agree in every cell. (3)
+Randomise the mover phase per run and re-run both grids. (4) Hardware pilot:
+two or three robots, one corridor, the E1 protocol and metrics. (5) A
+sensor-based safety supervisor in place of the oracle gate, and a
+navigation-stack TEB or MPPI as a further baseline.

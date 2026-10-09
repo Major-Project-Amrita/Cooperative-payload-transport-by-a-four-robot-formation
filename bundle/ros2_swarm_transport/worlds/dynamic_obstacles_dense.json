@@ -1,0 +1,145 @@
+{
+  "comment": "Dense-traffic contract for swarm_world_dynamic.sdf (E11). Movers 1-3 are dynamic_obstacles.json unchanged; 4-6 are added. cfg.dyn.max_movers selects the first N.",
+  "frame": "world",
+  "dt": 0.1,
+  "movers": [
+    {
+      "name": "mover1",
+      "shape": "box",
+      "size": [
+        0.7,
+        0.7
+      ],
+      "radius": 0.0,
+      "route": [
+        [
+          -6.0,
+          0.5
+        ],
+        [
+          13.9,
+          0.5
+        ]
+      ],
+      "speed": 0.9,
+      "t0": 2.0,
+      "wait": 0.0,
+      "loop": false
+    },
+    {
+      "name": "mover2",
+      "shape": "box",
+      "size": [
+        0.7,
+        0.7
+      ],
+      "radius": 0.0,
+      "route": [
+        [
+          7.0,
+          -0.5
+        ],
+        [
+          -13.5,
+          -0.5
+        ]
+      ],
+      "speed": 0.8,
+      "t0": 4.0,
+      "wait": 6.0,
+      "loop": true
+    },
+    {
+      "name": "mover3",
+      "shape": "circle",
+      "size": [
+        1.0,
+        1.0
+      ],
+      "radius": 0.5,
+      "route": [
+        [
+          2.0,
+          -4.2
+        ],
+        [
+          12.0,
+          -4.2
+        ]
+      ],
+      "speed": 0.5,
+      "t0": 0.0,
+      "wait": 3.0,
+      "loop": true
+    },
+    {
+      "name": "mover4",
+      "shape": "box",
+      "size": [
+        0.7,
+        0.7
+      ],
+      "radius": 0.0,
+      "route": [
+        [
+          3.0,
+          -1.7
+        ],
+        [
+          3.0,
+          4.3
+        ]
+      ],
+      "speed": 0.6,
+      "t0": 10.0,
+      "wait": 4.0,
+      "loop": true
+    },
+    {
+      "name": "mover5",
+      "shape": "circle",
+      "size": [
+        1.0,
+        1.0
+      ],
+      "radius": 0.5,
+      "route": [
+        [
+          -9.0,
+          4.3
+        ],
+        [
+          9.5,
+          4.3
+        ]
+      ],
+      "speed": 0.6,
+      "t0": 0.0,
+      "wait": 3.0,
+      "loop": true
+    },
+    {
+      "name": "mover6",
+      "shape": "box",
+      "size": [
+        0.7,
+        0.7
+      ],
+      "radius": 0.0,
+      "route": [
+        [
+          -3.5,
+          -4.4
+        ],
+        [
+          -3.5,
+          1.9
+        ]
+      ],
+      "speed": 0.5,
+      "t0": 6.0,
+      "wait": 2.0,
+      "loop": true
+    }
+  ]
+}

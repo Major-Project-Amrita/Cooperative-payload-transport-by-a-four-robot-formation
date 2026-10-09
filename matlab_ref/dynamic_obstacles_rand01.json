@@ -1,0 +1,53 @@
+{
+  "comment": "Motion contract for swarm_world_rand01.sdf (generated, seed 1001).",
+  "frame": "world",
+  "dt": 0.1,
+  "movers": [
+    {
+      "name": "rand01_mover1",
+      "shape": "box",
+      "size": [
+        0.7,
+        0.7
+      ],
+      "radius": 0.0,
+      "route": [
+        [
+          -1.24,
+          -6.5
+        ],
+        [
+          0.46,
+          6.5
+        ]
+      ],
+      "speed": 0.76,
+      "t0": 8.2,
+      "wait": 2.0,
+      "loop": true
+    },
+    {
+      "name": "rand01_mover2",
+      "shape": "box",
+      "size": [
+        0.7,
+        0.7
+      ],
+      "radius": 0.0,
+      "route": [
+        [
+          0.88,
+          6.5
+        ],
+        [
+          0.64,
+          -6.5
+        ]
+      ],
+      "speed": 0.89,
+      "t0": 7.2,
+      "wait": 2.0,
+      "loop": true
+    }
+  ]
+}
