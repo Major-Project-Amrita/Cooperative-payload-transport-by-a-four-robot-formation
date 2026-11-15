@@ -39,6 +39,12 @@ import numpy as np
 N_BINS = 72
 MODELS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                       "models")
+if not os.path.isdir(MODELS):          # installed with colcon: models are in share/
+    try:
+        from ament_index_python.packages import get_package_share_directory
+        MODELS = os.path.join(get_package_share_directory("ros2_swarm_transport"), "models")
+    except Exception:                                   # noqa: BLE001
+        pass
 _CACHE = {}
 
 

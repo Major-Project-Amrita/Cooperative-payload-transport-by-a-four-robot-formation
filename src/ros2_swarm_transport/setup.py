@@ -17,6 +17,8 @@ setup(
         (os.path.join('share', package_name, 'params'), glob('params/*.yaml')),
         (os.path.join('share', package_name, 'worlds'),
          glob('worlds/*.sdf') + glob('worlds/*.json') + glob('worlds/*.xml')),
+        (os.path.join('share', package_name, 'models'),
+         glob('models/*.npz') + glob('models/*.json')),
         # thin executable wrappers so `ros2 run` finds the nodes even with
         # setuptools >= 80 (which installs console_scripts outside lib/<pkg>)
         *[(os.path.join('lib', package_name), glob('scripts/*'))],
