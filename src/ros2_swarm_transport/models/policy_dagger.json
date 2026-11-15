@@ -1,0 +1,66 @@
+{
+  "iterations": [
+    {
+      "iteration": 0,
+      "beta": 1.0,
+      "rollouts": 42,
+      "rollout_reach": 0.9285714285714286,
+      "new_samples": 19385,
+      "total_samples": 19385,
+      "val_acc": 0.8544891640866873,
+      "wall_s": 188.6
+    },
+    {
+      "iteration": 1,
+      "beta": 0.5,
+      "rollouts": 42,
+      "rollout_reach": 0.9285714285714286,
+      "new_samples": 20339,
+      "total_samples": 39724,
+      "val_acc": 0.8658106747230614,
+      "wall_s": 338.4
+    },
+    {
+      "iteration": 2,
+      "beta": 0.25,
+      "rollouts": 42,
+      "rollout_reach": 0.9523809523809523,
+      "new_samples": 19267,
+      "total_samples": 58991,
+      "val_acc": 0.8735378877775895,
+      "wall_s": 500.2
+    },
+    {
+      "iteration": 3,
+      "beta": 0.125,
+      "rollouts": 42,
+      "rollout_reach": 0.9047619047619048,
+      "new_samples": 19419,
+      "total_samples": 78410,
+      "val_acc": 0.8896824384644816,
+      "wall_s": 471.5
+    }
+  ],
+  "train_worlds": [
+    "rand01",
+    "rand02",
+    "rand03",
+    "rand04",
+    "rand05",
+    "dynamic",
+    "plaza"
+  ],
+  "train_teams": [
+    "square@1.18",
+    "triangle@1.18",
+    "grid2x3@0.59"
+  ],
+  "expert": "mpc",
+  "classes": [
+    -1.2,
+    -0.6,
+    0.0,
+    0.6,
+    1.2
+  ]
+}

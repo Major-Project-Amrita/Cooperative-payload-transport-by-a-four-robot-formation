@@ -52,7 +52,18 @@ plt.rcParams.update({
     "lines.linewidth": 1.6, "figure.dpi": 150})
 
 
+# XSTACK=fixedgate: the cross-stack figures compare the MATLAB reference WITH
+# the corrected gate (results/matlab_fixedgate/, Octave) against the Python
+# exact gate, and are written with a _fixedgate suffix.
+XSTACK = os.environ.get("XSTACK", "")
+XSFX = ("_" + XSTACK) if XSTACK else ""
+XFIGS = {"xcheck_trajectories.png", "cross_stack_scatter.png", "e1_both_stacks.png",
+         "e2_noise_both_stacks.png"}
+
+
 def save(fig, name):
+    if XSFX and name in XFIGS:
+        name = name.replace(".png", XSFX + ".png")
     fig.savefig(os.path.join(FIG, name), bbox_inches="tight", dpi=150)
     plt.close(fig)
     print("  wrote docs/figures/" + name)
@@ -246,8 +257,12 @@ def fig_xcheck():
     ax2 = fig.add_axes([0.06, 0.08, 0.9, 0.3])
     found = False
     for algo in ALGOS:
-        mf = os.path.join(ROOT, "matlab_ref/logs", f"x_{algo}_s0.csv")
-        pf = os.path.join(RES, "xcheck", f"py_matlab_{algo}_s0.csv")
+        if XSTACK == "fixedgate":
+            mf = os.path.join(RES, "xcheck_fixedgate", f"x_{algo}_s0.csv")
+            pf = os.path.join(RES, "xcheck", f"py_exact_{algo}_s0.csv")
+        else:
+            mf = os.path.join(ROOT, "matlab_ref/logs", f"x_{algo}_s0.csv")
+            pf = os.path.join(RES, "xcheck", f"py_matlab_{algo}_s0.csv")
         if not (os.path.exists(mf) and os.path.exists(pf)):
             continue
         found = True
@@ -273,7 +288,7 @@ def fig_xcheck():
 
 
 def _cells():
-    f = os.path.join(RES, "cross_stack.csv")
+    f = os.path.join(RES, f"cross_stack{XSFX}.csv")
     return pd.read_csv(f) if os.path.exists(f) else None
 
 
@@ -303,6 +318,11 @@ def fig_cross_scatter():
 
 def _both():
     fm, fp = os.path.join(ROOT, "bundle/reference/results_all.csv"), os.path.join(RES, "results_headless.csv")
+    if XSTACK == "fixedgate":
+        fm = os.path.join(RES, "matlab_fixedgate", "results_all.csv")
+        fp = os.path.join(RES, "results_headless_exactgate.csv")
+        if not os.path.exists(fm):
+            return None, None
     if not os.path.exists(fp):
         return None, None
     return pd.read_csv(fm), pd.read_csv(fp)

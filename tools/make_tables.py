@@ -32,13 +32,16 @@ def tbl(df, fmt=None):
 
 
 # ---- T1 deterministic cross-check ------------------------------------------
-for gate in ("matlab", "exact"):
+T1LAB = {"matlab": ("a", "MATLAB reference gate vs Python reference gate"),
+         "exact": ("b", "MATLAB reference gate (defective) vs Python exact gate"),
+         "fixedgate": ("c", "MATLAB with the CORRECTED gate (Octave 8.4) vs Python exact gate")}
+for gate in ("matlab", "exact", "fixedgate"):
     f = os.path.join(RES, f"deterministic_xcheck_{gate}.csv")
     if have(f):
         d = pd.read_csv(f)
         d["algo"] = d.algo.map(NAME)
-        L += [f"## T1{'a' if gate == 'matlab' else 'b'}. Zero-noise cross-check, MATLAB vs Python "
-              f"({'reference' if gate == 'matlab' else 'exact'} gate), warehouse of the study", ""]
+        L += [f"## T1{T1LAB[gate][0]}. Zero-noise cross-check: {T1LAB[gate][1]}, "
+              "warehouse of the study", ""]
         L += tbl(d[["algo", "steps_matlab", "steps_py", "max_centroid_diff_m", "max_robot_diff_m",
                     "first_gt_1mm", "reject_matlab", "reject_py"]],
                  {"max_centroid_diff_m": "{:.1e}", "max_robot_diff_m": "{:.1e}"}) + [""]
@@ -52,6 +55,9 @@ if have(fm, fp):
     stacks = [("MATLAB", M), ("Python, reference gate", P)]
     if have(fe):
         stacks.append(("Python, exact gate", pd.read_csv(fe)))
+    ff = os.path.join(RES, "matlab_fixedgate", "results_all.csv")
+    if have(ff):
+        stacks.append(("MATLAB, corrected gate", pd.read_csv(ff)))
     L += ["## T2. E1 (eight laws, lidar-288, sigma0 = 0.02, square s = 1.18 m, 10 seeds)", ""]
     rows = []
     for a in ORDER:
