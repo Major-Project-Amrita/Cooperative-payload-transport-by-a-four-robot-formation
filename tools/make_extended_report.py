@@ -11,6 +11,7 @@ Sections (each skipped if its input does not exist yet):
   R5  E17 safety monitors             R6  E18 default vs tuned baselines
   R7  learned components (DAgger policy, conformal monitor)
   R8  physics: P1 replication and P2 robot-parameter sweep, every run listed
+  R9  E19 PA-VFH ablation: does the neural occupancy model help?
 Intervals: reach and event rates with Wilson 95 %; means with a 2,000-sample
 percentile bootstrap 95 %.
 """
@@ -454,7 +455,8 @@ def r6():
 def r7():
     pj = os.path.join(ROOT, "src", "ros2_swarm_transport", "models", "policy_dagger.json")
     mj = os.path.join(ROOT, "src", "ros2_swarm_transport", "models", "monitor_conformal.json")
-    if not (os.path.exists(pj) or os.path.exists(mj)):
+    oj = os.path.join(ROOT, "src", "ros2_swarm_transport", "models", "pavfh_occupancy.json")
+    if not (os.path.exists(pj) or os.path.exists(mj) or os.path.exists(oj)):
         return
     L.extend(["## R7. Learned components", ""])
     if os.path.exists(pj):
@@ -483,6 +485,86 @@ def r7():
                       for k, v in M["in_distribution"].items()],
                      ["alpha", "q", "coverage", "admit_rate", "false_accept_rate",
                       "false_accept_given_unsafe"]))
+
+
+    if os.path.exists(oj):
+        O = json.load(open(oj))
+        L.extend(["PA-VFH predictive occupancy network (label: " + O["label"] + "; train worlds "
+                  + ", ".join(O["train_worlds"]) + "; teams " + ", ".join(O["train_teams"])
+                  + "). `block_agree` is the fraction of validation sectors where the network and "
+                  "the oracle agree on blocked/free at the histogram threshold; `missed_block` is "
+                  "the fraction of oracle-blocked sectors the network calls free:", ""])
+        L.extend(tbl([{k: (f"{v:.4f}" if isinstance(v, float) else v) for k, v in r.items()}
+                      for r in O["rounds"]],
+                     ["round", "driver", "rollouts", "rollout_reach", "samples", "val_mae",
+                      "val_block_agree", "val_missed_block"]))
+
+
+def r9():
+    p = os.path.join(RES, "extended", "E19.csv")
+    if not os.path.exists(p):
+        return
+    d = pd.read_csv(p)
+    if not len(d):
+        return
+    laws = [a for a in ("pavfh", "pavfh_nonn", "pvfh_prob", "mpc", "mppi") if a in set(d.algo)]
+    L.extend(["## R9. PA-VFH ablation (E19): does the neural network help?", "",
+              f"{len(d)} runs (of 450 planned), random traffic phase, truth gate, seeds 1-6. "
+              "PA-VFH and PA-VFH (no NN) are the identical pipeline on the robot's own "
+              "instantaneous scans; the only difference is the learned occupancy model versus "
+              "the analytic kernel. PA-VFH-K, MPC and MPPI see the contract-predicted scan "
+              "(more information). maze, awswh, wh_m_racks and rand08 are held out from the "
+              "network's training.", ""])
+    rows = [dict(law=NAME[a], **summ(d[d.algo == a]),
+                 rejects=mci(d[d.algo == a].n_reject, "{:.1f}"),
+                 comp_ms=mci(d[d.algo == a].comp_ms_mean, "{:.2f}")) for a in laws]
+    L.extend(["All cells pooled:", ""])
+    L.extend(tbl(rows, ["law", "n", "reach", "contact_runs", "contact_steps", "min_gap",
+                        "time", "rejects", "comp_ms"]))
+    rows = []
+    for sg, x in d.groupby("sigma0"):
+        for a in laws:
+            y = x[x.algo == a]
+            if len(y):
+                s_ = summ(y)
+                rows.append(dict(sigma0=sg, law=NAME[a], n=s_["n"], reach=s_["reach"],
+                                 contact_runs=s_["contact_runs"], time=s_["time"],
+                                 rejects=mci(y.n_reject, "{:.1f}")))
+    L.extend(["By sensor noise:", ""])
+    L.extend(tbl(rows, ["sigma0", "law", "n", "reach", "contact_runs", "time", "rejects"]))
+    rows = []
+    for w, x in d.groupby("world"):
+        for a in laws:
+            y = x[x.algo == a]
+            if len(y):
+                s_ = summ(y)
+                rows.append(dict(world=w, law=NAME[a], n=s_["n"], reach=s_["reach"],
+                                 contact_runs=s_["contact_runs"], time=s_["time"]))
+    L.extend(["By world:", ""])
+    L.extend(tbl(rows, ["world", "law", "n", "reach", "contact_runs", "time"]))
+    # paired comparison NN vs no-NN on common (world, sigma0, seed) cells
+    a = d[d.algo == "pavfh"].set_index(["world", "sigma0", "seed"])
+    b = d[d.algo == "pavfh_nonn"].set_index(["world", "sigma0", "seed"])
+    common = a.index.intersection(b.index)
+    if len(common):
+        a, b = a.loc[common], b.loc[common]
+        both = (a.reached == 1) & (b.reached == 1)
+        dt = (a.total_time - b.total_time)[both].values
+        dr = (a.n_reject - b.n_reject).values
+        dc = (a.collisions - b.collisions).values
+        L.extend([f"Paired PA-VFH minus PA-VFH (no NN) on {len(common)} common "
+                  f"(world, noise, seed) missions (common random numbers):", ""])
+        L.extend(tbl([
+            dict(quantity="reached (NN / no NN)",
+                 value=f"{int(a.reached.sum())} / {int(b.reached.sum())}"),
+            dict(quantity=f"time difference, s (both reached, n={int(both.sum())})",
+                 value=mci(dt, "{:+.1f}") if len(dt) else "-"),
+            dict(quantity="rejected-step difference", value=mci(dr, "{:+.1f}")),
+            dict(quantity="contact-step difference", value=mci(dc, "{:+.1f}"))],
+            ["quantity", "value"]))
+        L.append("A negative difference favours the network. An interval that contains 0 "
+                 "means no measurable effect at this sample size.")
+        L.append("")
 
 
 def r8():
@@ -530,7 +612,7 @@ def r8():
 
 
 if __name__ == "__main__":
-    for fn in (r1, r2, r3, r4, r5, r6, r7, r8):
+    for fn in (r1, r2, r3, r4, r5, r6, r7, r8, r9):
         try:
             fn()
         except Exception as e:                   # noqa: BLE001

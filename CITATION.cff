@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this benchmark, its scenarios or its results, please cite it as below."
-title: "Local steering laws for rigid multi-robot payload transport: a replicated benchmark from kinematics to physics"
+title: "Local steering for rigid multi-robot payload transport in dynamic warehouses: a replicated benchmark and a learned-occupancy hybrid (PA-VFH)"
 type: software
 # TODO(authors): replace the placeholder below with every author (family-names,
 # given-names, affiliation, orcid) before tagging the release.
@@ -18,12 +18,14 @@ keywords:
   - MuJoCo
   - ROS 2
 abstract: >-
-  An open, replicated benchmark of ten local steering laws (APF, VFH, FGM, DWA,
-  lattice MPC, MPPI, three histogram variants and a learned DAgger policy) for a
-  team of differential-drive robots carrying one rigid payload through
-  warehouses with moving traffic. Two independent implementations (MATLAB and
-  Python/ROS 2) agree step for step at zero noise; the evaluation randomises
-  the traffic phase per run, tunes every planner under an equal budget, varies
-  team size and warehouse layout, separates ground-truth collision screening
-  from a deployable sensor-based safety monitor, and validates in MuJoCo
-  physics. Simulation only.
+  An open, replicated benchmark of twelve local steering laws (APF, VFH, FGM,
+  DWA, lattice MPC, MPPI, four histogram variants, a learned DAgger policy and
+  the proposed hybrid PA-VFH, which feeds a VFH+ decision layer with a learned
+  predictive-occupancy network) for a team of 3 to 9 differential-drive robots
+  carrying one rigid payload through eight warehouse layouts with moving
+  traffic. Two independent implementations (MATLAB and Python/ROS 2) agree
+  step for step at zero noise; the evaluation randomises the traffic phase per
+  run, tunes every planner under an equal budget, separates ground-truth
+  collision screening from deployable sensor-based and conformal learned
+  safety monitors, and replicates selected cases in MuJoCo physics with a
+  robot-parameter sweep. Simulation only.
