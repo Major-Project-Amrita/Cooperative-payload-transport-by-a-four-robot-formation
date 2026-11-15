@@ -74,7 +74,7 @@ labels are exact. At run time the network has to infer it from scan history.
   u > 0.1.
 
 **Deployment.** Numpy inference (equal to the PyTorch model to 5e-8),
-about 0.1 ms per step; weights are in
+0.1-0.25 ms per step on top of the analytic pipeline (measured); weights are in
 `src/ros2_swarm_transport/models/pavfh_occupancy.npz` and are installed
 with the ROS 2 package.
 

@@ -10,6 +10,17 @@
       "val_mae": 0.01833624392747879,
       "val_block_agree": 0.9834973122256744,
       "val_missed_block": 0.09324465310380803
+    },
+    {
+      "round": 1,
+      "driver": "pavfh",
+      "rollouts": 42,
+      "rollout_reach": 1.0,
+      "samples": 44064,
+      "wall_s": 183.5,
+      "val_mae": 0.014950038865208626,
+      "val_block_agree": 0.9857296867907399,
+      "val_missed_block": 0.06896433705250188
     }
   ],
   "train_worlds": [
