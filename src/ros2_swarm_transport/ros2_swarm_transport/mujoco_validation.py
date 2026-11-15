@@ -39,7 +39,8 @@ os.environ.setdefault("MUJOCO_GL", "egl")
 import numpy as np                                   # noqa: E402
 import mujoco                                        # noqa: E402
 
-from .geometry import formation_clearance, movers_distance   # noqa: E402
+from .geometry import (formation_clearance, movers_distance,  # noqa: E402
+                       traffic_phase_offsets)
 from .headless_runner import (contract_meta, contract_waypoints,  # noqa: E402
                               load_scenario, plan_formation, summarize_run)
 from .transport import (MissionController, eval_movers,  # noqa: E402
@@ -62,6 +63,12 @@ SUB = int(round(DT_CTRL / DT_PHYS))
 # robot: 0.18 m footprint radius (the planner's robot_radius), diff drive
 WHEEL_R, HALF_TRACK, ROOF_Z, PIN_Z = 0.05, 0.14, 0.20, 0.05
 V_WHEEL_MAX = 1.2                 # m/s rim speed the actuators can command
+# Robot/payload parameters varied by the physics sweep (tools/run_mujoco_batch.py
+# P2). The PLANNER keeps its nominal model (robot radius, motion limits), so
+# a changed value measures robustness to model mismatch.
+ROBOT_DEFAULT = dict(chassis_mass=6.0, v_wheel_max=V_WHEEL_MAX,
+                     wheel_friction=1.2, payload_scale=1.0, force_max=2.0)
+ROBOT = dict(ROBOT_DEFAULT)
 HOLD_MAX = 20                     # control steps the frame may wait in a row
 COLORS = ["0.15 0.35 0.75 1", "0.85 0.30 0.20 1", "0.20 0.55 0.30 1",
           "0.90 0.70 0.10 1"]
@@ -76,18 +83,18 @@ def _robot_xml(i, color):
     return f'''
     <body name="{n}" pos="0 0 0">
       <freejoint name="{n}_free"/>
-      <geom name="{n}_chassis" type="cylinder" size="0.18 0.07" pos="0 0 0.11" rgba="{color}" mass="6.0" friction="0.4 0.005 0.0001"/>
+      <geom name="{n}_chassis" type="cylinder" size="0.18 0.07" pos="0 0 0.11" rgba="{color}" mass="{ROBOT['chassis_mass']:.3f}" friction="0.4 0.005 0.0001"/>
       <geom name="{n}_roof" type="cylinder" size="0.12 0.01" pos="0 0 0.19" rgba="0.9 0.92 0.95 1" mass="0.2"/>
       <geom name="{n}_nose" type="box" size="0.04 0.02 0.005" pos="0.12 0 0.185" rgba="0.1 0.1 0.1 1" mass="0.01" contype="0" conaffinity="0"/>
       <geom name="{n}_caster_f" type="sphere" size="0.02" pos="0.14 0 0.02" rgba="0.2 0.2 0.2 1" mass="0.05" friction="0.02 0.001 0.0001" condim="1" priority="1"/>
       <geom name="{n}_caster_b" type="sphere" size="0.02" pos="-0.14 0 0.02" rgba="0.2 0.2 0.2 1" mass="0.05" friction="0.02 0.001 0.0001" condim="1" priority="1"/>
       <body name="{n}_wl" pos="0 {HALF_TRACK} {WHEEL_R}">
         <joint name="{n}_jl" type="hinge" axis="0 1 0" damping="0.01" armature="0.002"/>
-        <geom name="{n}_wl_g" type="cylinder" size="{WHEEL_R} 0.015" quat="0.7071068 0.7071068 0 0" rgba="0.1 0.1 0.12 1" mass="0.3" friction="1.2 0.005 0.0001"/>
+        <geom name="{n}_wl_g" type="cylinder" size="{WHEEL_R} 0.015" quat="0.7071068 0.7071068 0 0" rgba="0.1 0.1 0.12 1" mass="0.3" friction="{ROBOT['wheel_friction']:.3f} 0.005 0.0001"/>
       </body>
       <body name="{n}_wr" pos="0 {-HALF_TRACK} {WHEEL_R}">
         <joint name="{n}_jr" type="hinge" axis="0 1 0" damping="0.01" armature="0.002"/>
-        <geom name="{n}_wr_g" type="cylinder" size="{WHEEL_R} 0.015" quat="0.7071068 0.7071068 0 0" rgba="0.1 0.1 0.12 1" mass="0.3" friction="1.2 0.005 0.0001"/>
+        <geom name="{n}_wr_g" type="cylinder" size="{WHEEL_R} 0.015" quat="0.7071068 0.7071068 0 0" rgba="0.1 0.1 0.12 1" mass="0.3" friction="{ROBOT['wheel_friction']:.3f} 0.005 0.0001"/>
       </body>
     </body>'''
 
@@ -131,8 +138,8 @@ def build_scene(base_xml, movers, K, formation, spacing, payload, waypoints):
         wb.append(_robot_xml(i, COLORS[i - 1]))
         for side in ("l", "r"):
             act.append(f'    <velocity name="a_robot{i}_{side}" joint="robot{i}_j{side}" '
-                       f'kv="1.5" ctrlrange="-{V_WHEEL_MAX/WHEEL_R:.1f} {V_WHEEL_MAX/WHEEL_R:.1f}" '
-                       f'forcerange="-2 2"/>')
+                       f'kv="1.5" ctrlrange="-{ROBOT["v_wheel_max"]/WHEEL_R:.1f} {ROBOT["v_wheel_max"]/WHEEL_R:.1f}" '
+                       f'forcerange="-{ROBOT["force_max"]:g} {ROBOT["force_max"]:g}"/>')
     for m in movers:
         if m.shape == "circle":
             g = f'<geom name="{m.name}_g" type="cylinder" pos="0 0 0.6" size="{m.r:.3f} 0.6" rgba="0.95 0.55 0.10 1"/>'
@@ -151,17 +158,17 @@ def build_scene(base_xml, movers, K, formation, spacing, payload, waypoints):
         wb.append(f'''
     <body name="payload" pos="0 0 0">
       <freejoint name="payload_free"/>
-      <geom name="payload_plate" type="box" pos="0 0 0.225" size="{hx:.3f} {hy:.3f} 0.015" quat="{q}" rgba="0.62 0.64 0.66 1" mass="3.0"/>
-      <geom name="payload_crate" type="box" pos="0 0 {0.24 + min(hx, hy) * 0.5:.3f}" size="{hx*0.6:.3f} {hy*0.6:.3f} {min(hx, hy)*0.5:.3f}" quat="{q}" rgba="0.74 0.60 0.40 1" mass="9.0"/>
+      <geom name="payload_plate" type="box" pos="0 0 0.225" size="{hx:.3f} {hy:.3f} 0.015" quat="{q}" rgba="0.62 0.64 0.66 1" mass="{3.0*ROBOT['payload_scale']:.3f}"/>
+      <geom name="payload_crate" type="box" pos="0 0 {0.24 + min(hx, hy) * 0.5:.3f}" size="{hx*0.6:.3f} {hy*0.6:.3f} {min(hx, hy)*0.5:.3f}" quat="{q}" rgba="0.74 0.60 0.40 1" mass="{9.0*ROBOT['payload_scale']:.3f}"/>
     </body>''')
         for i in range(1, K + 1):
             eq.append(f'    <connect name="pin{i}" body1="payload" body2="robot{i}" '
                       f'anchor="0 0 0" active="false"/>')
     elif payload == "behind":
-        wb.append('''
+        wb.append(f'''
     <body name="payload" pos="0 0 0">
       <freejoint name="payload_free"/>
-      <geom name="payload_sled" type="box" pos="0 0 0.22" size="0.30 0.25 0.14" rgba="0.74 0.60 0.40 1" mass="10.0"/>
+      <geom name="payload_sled" type="box" pos="0 0 0.22" size="0.30 0.25 0.14" rgba="0.74 0.60 0.40 1" mass="{10.0*ROBOT['payload_scale']:.3f}"/>
       <geom name="payload_c0" type="sphere" pos="0.24 0.19 0.04" size="0.04" mass="0.1" friction="0.02 0.001 0.0001" condim="1" priority="1"/>
       <geom name="payload_c1" type="sphere" pos="0.24 -0.19 0.04" size="0.04" mass="0.1" friction="0.02 0.001 0.0001" condim="1" priority="1"/>
       <geom name="payload_c2" type="sphere" pos="-0.24 0.19 0.04" size="0.04" mass="0.1" friction="0.02 0.001 0.0001" condim="1" priority="1"/>
@@ -415,14 +422,23 @@ class MujocoPlant:
 def setup(world_sdf=None, contract=None, mjcf=None, algo="pvfh_prob",
           formation="square", spacing=1.18, payload="on_top", seed=1,
           sigma0=0.02, kin=True, video=None, timesteps=3000, gate="exact",
-          hold_err=0.6, gui=False):
+          hold_err=0.6, gui=False, phase=False, robot=None):
     """Build the scenario, the controller and the plant (shared by run() and
-    the ROS 2 nodes)."""
+    the ROS 2 nodes). phase: randomised traffic phase keyed on the seed;
+    robot: overrides of ROBOT (chassis_mass, v_wheel_max, wheel_friction,
+    payload_scale, force_max)."""
+    ROBOT.clear()
+    ROBOT.update(ROBOT_DEFAULT)
+    ROBOT.update(robot or {})
     world_sdf = world_sdf or os.path.join(WORLDS, "swarm_world_awswh.sdf")
     contract = contract or os.path.join(WORLDS, "dynamic_obstacles_awswh.json")
     if mjcf is None and os.path.basename(world_sdf) == "swarm_world_awswh.sdf":
         mjcf = os.path.join(WORLDS, "aws_warehouse.xml")
-    world, movers = load_scenario(world_sdf, contract)
+    t0_offset = None
+    if phase:
+        _, m_nom = load_scenario(world_sdf, contract)
+        t0_offset = traffic_phase_offsets(m_nom, seed)
+    world, movers = load_scenario(world_sdf, contract, t0_offset=t0_offset)
     meta = contract_meta(contract)
     waypoints = contract_waypoints(contract)
     if waypoints is None:
@@ -436,7 +452,10 @@ def setup(world_sdf=None, contract=None, mjcf=None, algo="pvfh_prob",
     S = dict(world=world, movers=movers, waypoints=waypoints, start=start, P=P,
              F=F, world_sdf=world_sdf, mjcf=mjcf, formation=formation,
              spacing=spacing, payload=payload, algo=algo, seed=seed,
-             sigma0=sigma0, kin=kin, hold_err=hold_err, video=video)
+             sigma0=sigma0, kin=kin, hold_err=hold_err, video=video,
+             phase=bool(phase), robot=dict(ROBOT),
+             t0_offset=("" if t0_offset is None else
+                        ";".join(f"{x:.3f}" for x in t0_offset)))
     S["make_controller"] = lambda: MissionController(
         world, movers, F, waypoints, P, cfg, algo, rng, payload, hold_err)
     S["make_plant"] = lambda: MujocoPlant(world, movers, F, start, waypoints,
@@ -521,7 +540,9 @@ class MissionLog:
             pin_gap_max=float(max(self.pin_hist, default=0.0)),
             hold_steps=int(ctrl.n_hold), hold_err=S0["hold_err"],
             payload_tilt_max_deg=float(max(self.tilt_hist, default=0.0)),
-            wall_s=wall_s, world=os.path.basename(S0["world_sdf"]))
+            wall_s=wall_s, world=os.path.basename(S0["world_sdf"]),
+            phase=S0.get("phase", False), t0_offset=S0.get("t0_offset", ""),
+            **{f"robot_{k}": v for k, v in S0.get("robot", {}).items()})
         os.makedirs(out_dir, exist_ok=True)
         hdr = list(rows[0].keys())
         with open(os.path.join(out_dir, name + ".csv"), "w") as fh:
@@ -544,13 +565,14 @@ class MissionLog:
 def run(world_sdf=None, contract=None, mjcf=None, algo="pvfh_prob",
         formation="square", spacing=1.18, payload="on_top", seed=1,
         sigma0=0.02, kin=True, video=None, out_dir=None, name=None,
-        timesteps=3000, verbose=True, gate="exact", hold_err=0.6, gui=False):
+        timesteps=3000, verbose=True, gate="exact", hold_err=0.6, gui=False,
+        phase=False, robot=None):
     """One physics mission, controller and plant in one process. Returns the
     summary dict (also written as JSON)."""
     out_dir = out_dir or os.path.join(ROOT, "results", "mujoco")
     name = name or f"{algo}_{formation}_{payload}_s{seed}"
     S = setup(world_sdf, contract, mjcf, algo, formation, spacing, payload, seed,
-              sigma0, kin, video, timesteps, gate, hold_err, gui)
+              sigma0, kin, video, timesteps, gate, hold_err, gui, phase, robot)
     ctrl, plant = S["make_controller"](), S["make_plant"]()
     log = MissionLog(S)
     t_wall = time.perf_counter()

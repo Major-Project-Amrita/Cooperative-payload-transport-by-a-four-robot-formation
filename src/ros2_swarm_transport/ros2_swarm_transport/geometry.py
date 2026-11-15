@@ -368,6 +368,31 @@ def eval_mover_vel(mover, t: float) -> np.ndarray:
     return mover.speed * d
 
 
+def traffic_phase_offsets(movers, seed, once_window=20.0):
+    """Randomised traffic phase: one release-time offset (s) per mover, added
+    to the contract t0. Drawn from a stream keyed on (seed, 7919), so it is
+    independent of the sensor-noise stream of the same seed and the nominal
+    noise realisation is unchanged.
+
+      loop movers : offset = -u, u ~ U(0, T_cycle), T_cycle = 2 (L/v + wait),
+                    i.e. the mover is at a uniformly random point of its
+                    shuttle cycle when the mission starts;
+      one-shot    : offset ~ U(-t0, once_window), i.e. it is released at a
+                    uniform time in [0, t0 + once_window].
+    The offsets are returned (and logged) so MATLAB can replay them through
+    cfg.dyn.t0_offset."""
+    rng = np.random.default_rng([int(seed), 7919])
+    out = []
+    for m in movers:
+        L = float(np.linalg.norm(np.asarray(m.route[1]) - np.asarray(m.route[0])))
+        if m.loop and m.speed > 0 and L > 0:
+            T = 2.0 * (L / m.speed + m.wait)
+            out.append(-float(rng.uniform(0.0, T)))
+        else:
+            out.append(float(rng.uniform(-m.t0, once_window)))
+    return np.asarray(out, dtype=float)
+
+
 @dataclass
 class Mover:
     name: str
@@ -461,6 +486,14 @@ def formation_offsets(kind, K, s):
         gx, gy = np.meshgrid(np.arange(2), np.arange(2))
         offs = np.column_stack([gx.ravel(), gy.ravel()]) * s
         return offs - offs.mean(axis=0)
+    if kind.startswith("grid"):
+        # "gridRxC": R rows x C columns at spacing s (K = R*C robots), e.g.
+        # grid2x3 (6 robots), grid3x3 (9). grid2x2 equals "square" up to
+        # slot order. Added for the team-size experiments (E16).
+        rr, cc = (int(v) for v in kind[4:].split("x"))
+        gx, gy = np.meshgrid(np.arange(cc), np.arange(rr))
+        offs = np.column_stack([gx.ravel(), gy.ravel()]) * s
+        return offs - offs.mean(axis=0)
     if kind == "line":
         return np.column_stack([
             (np.arange(K) - (K - 1) / 2.0) * s, np.zeros(K)])
@@ -473,7 +506,7 @@ def formation_offsets(kind, K, s):
             np.cos(2 * math.pi * np.arange(3) / 3 + math.pi / 2),
             np.sin(2 * math.pi * np.arange(3) / 3 + math.pi / 2)])
     raise ValueError(f"unknown formation '{kind}' "
-                     "(square|line|triangle|diamond|v)")
+                     "(square|line|triangle|diamond|v|gridRxC)")
 
 
 def _convex_hull(points):
@@ -569,6 +602,17 @@ def formation_clearance(center, heading, offsets, world: World,
             ring = np.append(ring, ring[0])
             for k in range(len(ring) - 1):
                 a, b = slot[ring[k] - 1], slot[ring[k + 1] - 1]
+                L = float(np.linalg.norm(b - a))
+                if L > edge_step:
+                    m = int(math.ceil(L / edge_step))
+                    lam = (np.arange(1, m) / m)[:, None]
+                    pts.append(a + lam * (b - a))
+        elif K > 4:
+            # larger teams (gridRxC, long lines): sample the convex-hull
+            # outline. K <= 4 keeps the reference behaviour exactly.
+            Hh = _convex_hull(slot)
+            for k in range(len(Hh)):
+                a, b = Hh[k], Hh[(k + 1) % len(Hh)]
                 L = float(np.linalg.norm(b - a))
                 if L > edge_step:
                     m = int(math.ceil(L / edge_step))

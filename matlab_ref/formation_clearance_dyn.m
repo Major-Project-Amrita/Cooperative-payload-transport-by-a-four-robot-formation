@@ -112,8 +112,13 @@ end
 for i = 1:numel(world.boxes)
     B  = world.boxes(i);
     cb = cos(B.yaw); sb = sin(B.yaw);
+    % Corners in CYCLIC order (+,+),(+,-),(-,-),(-,+) so that consecutive
+    % vertices are true box edges and both box edge normals are tested.
+    % (The pre-2026-11 order (+,+),(+,-),(-,+),(-,-) made two "edges" the
+    % diagonals, so one normal was never tested: conservative false
+    % rejections. See docs/DOCUMENTATION.md section 5.3.)
     corners = ([cb -sb; sb cb] * [B.h(1)  B.h(1) -B.h(1) -B.h(1); ...
-                                  B.h(2) -B.h(2)  B.h(2) -B.h(2)])' + repmat(B.c, 4, 1);
+                                  B.h(2) -B.h(2) -B.h(2)  B.h(2)])' + repmat(B.c, 4, 1);
     P = corners';
     if ~hull_poly_separated(H, r, P, axes_v), return; end
 end
@@ -134,7 +139,7 @@ for k = 1:numel(movers)
         if isfield(m, 'yaw'), yaw_m = m.yaw; end
         cm = cos(yaw_m); sm = sin(yaw_m);
         corners = ([cm -sm; sm cm] * [m.size(1)/2  m.size(1)/2 -m.size(1)/2 -m.size(1)/2; ...
-                                      m.size(2)/2 -m.size(2)/2  m.size(2)/2 -m.size(2)/2])' + repmat(m.c, 4, 1);
+                                      m.size(2)/2 -m.size(2)/2 -m.size(2)/2  m.size(2)/2])' + repmat(m.c, 4, 1);   % cyclic
         P = corners';
         if ~hull_poly_separated(H, r, P, axes_v), return; end
     end

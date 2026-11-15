@@ -39,6 +39,16 @@ DEFAULTS = dict(
     stuck_escape_steps=5, escape_step=0.4, eps=1e-6, blend_fade=True,
     collision_mode="payload",
     gate="exact",          # "matlab" = bug-compatible SAT (see geometry.py)
+    # who decides the pose commit (safety_monitor.py):
+    #   "truth"  ground-truth screen decides (the reference behaviour)
+    #   "audit"  truth decides, the sensor monitor is scored in the shadow
+    #   "sensor" the sensor monitor decides; truth only scores it
+    #   "learned" the learned, conformal-calibrated monitor decides
+    gate_source="truth", mon_k_sigma=3.0, mon_v_obs=1.0, mon_horizon=0.2,
+    mon_beams=288, mon_range=6.0, mon_seed=0,
+    mon_model="monitor_conformal", mon_alpha=0.05,
+    mon_record=None,       # list -> (features, true clearance) per gate check
+    nn_record=None, nn_beta=0.0, nn_model="policy_dagger",
     # dynamic obstacles
     slow_margin=0.25, slow_min=0.4, hold_time=1.5, lookahead=1.0,
     avoid_vel_frac=0.25,
@@ -297,6 +307,26 @@ class TransportLeader:
         self.last_escape = None
         self.last_cmd = None
         self.goal = None
+        if self.algo == "nn":
+            cfg.nn.update(offsets=self.offsets, robot_radius=P["robot_radius"],
+                          model=P["nn_model"], record=P["nn_record"],
+                          beta=P["nn_beta"],
+                          rng=np.random.default_rng([int(P["mon_seed"]), 271828]))
+        self.monitor = None
+        if P["gate_source"] != "truth" or P["mon_record"] is not None:
+            from .safety_monitor import SensorSafetyMonitor
+            self.monitor = SensorSafetyMonitor(
+                self.offsets, P["robot_radius"], cfg,
+                np.random.default_rng([int(P["mon_seed"]), 104729]),
+                n_beams=P["mon_beams"], max_range=P["mon_range"],
+                k_sigma=P["mon_k_sigma"], v_obs_max=P["mon_v_obs"],
+                horizon=P["mon_horizon"], world=world, movers=movers)
+            if P["gate_source"] == "learned":
+                self.monitor.use_learned(P["mon_model"], P["mon_alpha"])
+
+    @property
+    def gate_stats(self):
+        return None if self.monitor is None else dict(self.monitor.stats)
 
     def set_goal(self, goal):
         """Start a waypoint leg: reset the progress window on the new axis."""
@@ -310,9 +340,54 @@ class TransportLeader:
 
     def _safe(self, pos, heading, sim_t, mt):
         P = self.P
-        return step_safe(pos, heading, self.world, self.movers, sim_t, P["dt"],
-                         P["robot_radius"], P["collision_mode"], self.offsets,
-                         mt, P["gate"])
+        truth = step_safe(pos, heading, self.world, self.movers, sim_t, P["dt"],
+                          P["robot_radius"], P["collision_mode"], self.offsets,
+                          mt, P["gate"])
+        if self.monitor is None:
+            return truth
+        if P["mon_record"] is not None:
+            # training data for the learned monitor: the true clearance the
+            # gate thresholds (min over t and t+dt, statics + movers)
+            c0, _ = formation_clearance(pos, heading, self.offsets, self.world,
+                                        P["robot_radius"], P["collision_mode"],
+                                        movers=mt, sat=P["gate"])
+            c1 = c0
+            if self.movers:
+                c1, _ = formation_clearance(
+                    pos, heading, self.offsets, self.world, P["robot_radius"],
+                    P["collision_mode"], movers=eval_movers(self.movers, sim_t + P["dt"]),
+                    sat=P["gate"])
+            P["mon_record"].append((self.monitor.features(pos, heading),
+                                    float(min(c0, c1)), bool(truth)))
+        if P["gate_source"] == "learned":
+            mon = self.monitor.learned_safe(pos, heading)
+        else:
+            mon = self.monitor.safe(pos, heading)
+        self.monitor.score(mon, truth)
+        if P["gate_source"] in ("audit", "truth"):
+            return truth
+        return mon
+
+    def _mon_safe(self, cand, th):
+        if self.P["gate_source"] == "learned":
+            return self.monitor.learned_safe(cand, th)
+        return self.monitor.safe(cand, th)
+
+    def _sensor_escape(self, preferred, avoid_heading, avoid_width, num_probe=36):
+        """find_escape_heading without the ground truth: the first heading
+        (by deviation from `preferred`) whose one-step translation the
+        monitor admits."""
+        P = self.P
+        angles = -math.pi + 2 * math.pi * np.arange(num_probe) / num_probe
+        order = np.argsort(np.abs(wrap(angles - preferred)), kind="stable")
+        for oi in order:
+            th = float(angles[oi])
+            if avoid_heading is not None and abs(wrap(th - avoid_heading)) < avoid_width:
+                continue
+            cand = self.pos + P["escape_step"] * np.array([math.cos(th), math.sin(th)])
+            if self._mon_safe(cand, th):
+                return True, th
+        return False, preferred
 
     def step(self, sim_t):
         """One 10 Hz transport step at absolute time sim_t. Returns a dict of
@@ -322,6 +397,9 @@ class TransportLeader:
         t = self.t_leg
         goal = self.goal
         mt = eval_movers(self.movers, sim_t)
+        sensor_only = P["gate_source"] in ("sensor", "learned")
+        if self.monitor is not None:
+            self.monitor.observe(self.pos, self.heading, sim_t)
         margin = self.half_diag + P["robot_radius"]
         vec_goal = (goal - self.pos) / (float(np.linalg.norm(goal - self.pos)) + eps)
         goal_h = math.atan2(vec_goal[1], vec_goal[0])
@@ -340,11 +418,14 @@ class TransportLeader:
             avoid_h = self.last_escape
 
         if self.escape_commit == 0 and want_probe:
-            found, eh = find_escape_heading(
-                self.pos, self.world, self.movers, sim_t, self.offsets,
-                P["robot_radius"], goal_h, 36, P["collision_mode"],
-                P["escape_step"], P["hold_time"], dt, avoid_h,
-                P["adl_diversify"], P["gate"])
+            if sensor_only:
+                found, eh = self._sensor_escape(goal_h, avoid_h, P["adl_diversify"])
+            else:
+                found, eh = find_escape_heading(
+                    self.pos, self.world, self.movers, sim_t, self.offsets,
+                    P["robot_radius"], goal_h, 36, P["collision_mode"],
+                    P["escape_step"], P["hold_time"], dt, avoid_h,
+                    P["adl_diversify"], P["gate"])
             self.last_probe_step = t
             if found:
                 self.escape_heading = eh
@@ -382,12 +463,19 @@ class TransportLeader:
             total = w_goal * vec_goal_b + P["w_vfh"] * vec_steer
             h_raw = math.atan2(total[1], total[0])
 
-            near_pre, near = predicted_min_mover_gap(
-                self.pos, v_self, self.movers, sim_t, dt, P["lookahead"])
             thr = P["slow_margin"] + P["robot_radius"]
-            fastest = max((float(np.linalg.norm(m.v)) for m in mt), default=0.0)
-            if self.movers and near_pre < thr and fastest / V > P["avoid_vel_frac"]:
-                v_scale = max(P["slow_min"], min(1.0, 0.8 * near_pre / thr))
+            if sensor_only:
+                # no mover contract: slow on the monitor's own margin
+                g = self.monitor.clearance(self.pos, self.heading) + P["robot_radius"]
+                near_pre = near = min(g, 99.0)
+                if near_pre < thr:
+                    v_scale = max(P["slow_min"], min(1.0, 0.8 * near_pre / thr))
+            else:
+                near_pre, near = predicted_min_mover_gap(
+                    self.pos, v_self, self.movers, sim_t, dt, P["lookahead"])
+                fastest = max((float(np.linalg.norm(m.v)) for m in mt), default=0.0)
+                if self.movers and near_pre < thr and fastest / V > P["avoid_vel_frac"]:
+                    v_scale = max(P["slow_min"], min(1.0, 0.8 * near_pre / thr))
             turn_gain = P["alpha"]
             if (P["comm_drop"] > 0 and self.last_cmd is not None
                     and self.rng.random() < P["comm_drop"]):

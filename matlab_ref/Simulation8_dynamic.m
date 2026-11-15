@@ -92,6 +92,8 @@ cfg.dyn.avoid_vel_frac = 0.25; % -, mover speeds at/below this fraction of V
 cfg.dyn.speed_scale   = 1.0;   % -, multiplies every mover's contract speed
                                %     (E8 traffic-speed sweep; 1 = the contract)
 cfg.dyn.max_movers    = inf;   % use only the first N movers of the contract
+cfg.dyn.t0_offset     = [];    % s, per-mover release-time offsets added to the
+                               %   contract t0 (randomised traffic phase; [] = nominal)
                                %     (E11 traffic-density sweep; 0 = none)
 
 % --- ROBUSTNESS PERTURBATIONS (all off by default; transport phase only) ---
@@ -296,6 +298,14 @@ if isfinite(cfg.dyn.max_movers)
 end
 for k = 1:numel(movers)
     movers(k).speed = movers(k).speed * cfg.dyn.speed_scale;
+end
+if ~isempty(cfg.dyn.t0_offset)
+    % Traffic phase: shift each mover's release time. Offsets are drawn by the
+    % caller (one per mover, independent of the sensor-noise seed) so that the
+    % MATLAB and Python stacks replay exactly the same timetable.
+    for k = 1:numel(movers)
+        movers(k).t0 = movers(k).t0 + cfg.dyn.t0_offset(min(k, numel(cfg.dyn.t0_offset)));
+    end
 end
 nM = numel(movers);
 

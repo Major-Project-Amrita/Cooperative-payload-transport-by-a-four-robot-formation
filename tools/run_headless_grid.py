@@ -34,6 +34,7 @@ COLS = ["stack", "exp", "algo", "sense_kind", "sigma0", "beams", "seed",
         "coll_static", "coll_mover", "n_reject", "n_escape", "path_length",
         "path_eff", "min_clear", "mean_clear", "total_time", "transport_time",
         "total_turn", "comp_ms_mean", "max_robot_speed", "run_name", "key"]
+COLS_PHASE = COLS + ["phase", "t0_offset"]
 
 
 def g(x):
@@ -147,9 +148,10 @@ def run_name(j):
 
 
 def run_one(args):
-    j, gate, runs_dir = args
+    j, gate, runs_dir = args[:3]
+    phase = bool(args[3]) if len(args) > 3 else False
     from ros2_swarm_transport.headless_runner import run_mission, write_csv
-    name = run_name(j)
+    name = run_name(j) + ("_ph1" if phase else "")
     r = dict(stack="ros2_headless", exp=j["exp"], algo=j["algo"],
              sense_kind=j["kind"], sigma0=j["sigma0"], beams=j["beams"],
              seed=j["seed"], world=j["world"], formation=j["formation"],
@@ -167,7 +169,7 @@ def run_one(args):
             max_movers=None if j["nmov"] < 0 else j["nmov"], verbose=False,
             timesteps=3000, adl=bool(j["adl"]), kin=bool(j["kin"]),
             loc_sigma_pos=j["loc"], loc_sigma_yaw=j["loc"] * math.radians(20),
-            comm_drop=j["drop"], gate=gate)
+            comm_drop=j["drop"], gate=gate, phase=phase)
         if runs_dir:
             write_csv(rows, os.path.join(runs_dir, name + ".csv"))
         r.update(reached=int(S["reached_goal"]), collisions=S["collisions"],
@@ -177,7 +179,8 @@ def run_one(args):
                  min_clear=S["min_clearance"], mean_clear=S["mean_clearance"],
                  total_time=S["total_time"], transport_time=S["transport_time"],
                  total_turn=S["total_turning"], comp_ms_mean=S["comp_ms_mean"],
-                 max_robot_speed=S["max_robot_speed"])
+                 max_robot_speed=S["max_robot_speed"],
+                 phase=int(phase), t0_offset=S["t0_offset"])
     except Exception as e:                                # noqa: BLE001
         r["error"] = f"{type(e).__name__}: {e}"
     r["wall"] = time.perf_counter() - t0
@@ -205,9 +208,16 @@ def main():
     ap.add_argument("--no-runs", action="store_true",
                     help="do not save the per-step logs")
     ap.add_argument("--list", action="store_true")
+    ap.add_argument("--phase", action="store_true",
+                    help="randomise the traffic phase per run (independent "
+                         "stream keyed on the seed; geometry.traffic_phase_offsets)")
     a = ap.parse_args()
 
     J = build_jobs(a.mode, a.seeds, a.only.upper() if a.only else None)
+    cols = COLS_PHASE if a.phase else COLS
+    if a.phase:
+        for j in J:
+            j["key"] += "|ph1"
     uniq = {}
     for j in J:
         uniq.setdefault(j["key"], j)
@@ -232,7 +242,7 @@ def main():
                 done.add(row["exp"] + "|" + row["key"])
     else:
         with open(out, "w") as fh:
-            fh.write(",".join(COLS) + "\n")
+            fh.write(",".join(cols) + "\n")
     todo = [j for k, j in uniq.items()
             if any(x["key"] == k and x["exp"] + "|" + k not in done for x in J)]
     labels = {}
@@ -243,7 +253,7 @@ def main():
     t0 = time.perf_counter()
     nfail = 0
     with ProcessPoolExecutor(a.jobs) as ex, open(out, "a") as fh:
-        futs = [ex.submit(run_one, (j, a.gate, runs_dir)) for j in todo]
+        futs = [ex.submit(run_one, (j, a.gate, runs_dir, a.phase)) for j in todo]
         for i, f in enumerate(as_completed(futs), 1):
             r = f.result()
             if "error" in r:
@@ -253,7 +263,7 @@ def main():
                 if e + "|" + r["key"] in done:
                     continue
                 r["exp"] = e
-                fh.write(",".join(fmt(r.get(c)) for c in COLS) + "\n")
+                fh.write(",".join(fmt(r.get(c)) for c in cols) + "\n")
             fh.flush()
             if i % 100 == 0 or i == len(futs):
                 print(f"  [{i}/{len(futs)}] {time.perf_counter() - t0:.0f} s", flush=True)

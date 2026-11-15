@@ -26,7 +26,7 @@ import numpy as np
 
 from .assign_slots import assign_slots
 from .geometry import (formation_offsets, load_dynamic_obstacles,
-                       movers_distance, world_from_sdf)
+                       movers_distance, traffic_phase_offsets, world_from_sdf)
 from .transport import (FormingPhase, TransportLeader, eval_movers,
                         make_params, predicted_min_mover_gap, rot2d, wrap)
 from .vfh import ALGOS, VfhConfig
@@ -56,8 +56,10 @@ def contract_waypoints(contract_path):
 
 
 def load_scenario(world_path, contract_path, mover_scale=1.0, max_movers=None,
-                  robot_height=0.35):
-    """World + movers exactly as Simulation8_dynamic loads them."""
+                  robot_height=0.35, t0_offset=None):
+    """World + movers exactly as Simulation8_dynamic loads them.
+    t0_offset: per-mover release-time offsets (s), the randomised traffic
+    phase (geometry.traffic_phase_offsets); None = the nominal timetable."""
     world = world_from_sdf(world_path, robot_height=robot_height,
                            movers_json=contract_path)
     movers = []
@@ -67,15 +69,21 @@ def load_scenario(world_path, contract_path, mover_scale=1.0, max_movers=None,
         movers = movers[:max_movers]
     for m in movers:
         m.speed *= mover_scale
+    if t0_offset is not None and len(movers):
+        off = np.atleast_1d(np.asarray(t0_offset, dtype=float))
+        for k, m in enumerate(movers):
+            m.t0 += float(off[min(k, len(off) - 1)])
     movers = [m.eval_at(0.0) for m in movers]
     return world, movers
 
 
 def plan_formation(formation, spacing, start, first_goal, scatter_center=None,
-                   scatter_radius=2.2):
-    """Slots, start ring and the Hungarian robot->slot assignment."""
-    offsets = formation_offsets(formation, 3 if formation == "triangle" else 4,
-                                spacing)
+                   scatter_radius=2.2, K=None):
+    """Slots, start ring and the Hungarian robot->slot assignment.
+    K: robots for the 'line' shape (default 4); gridRxC fixes K = R*C."""
+    if K is None:
+        K = 3 if formation == "triangle" else 4
+    offsets = formation_offsets(formation, K, spacing)
     K = len(offsets)
     start = np.asarray(start, dtype=float)
     d = np.asarray(first_goal, dtype=float) - start
@@ -98,20 +106,29 @@ def run_mission(world_path, contract_path, algo="pvfh", sense="lidar",
                 scatter_radius=None,
                 mover_scale=1.0, max_movers=None, pred_lead=0.5, pred_dt=0.1,
                 baseline_horizon=True, verbose=True, world=None, movers=None,
+                phase=False, t0_offset=None, n_robots=None, vfh_over=None,
                 **params):
     """Run the full mission; returns (rows, summary). rows are CSV dicts.
     **params overrides transport.DEFAULTS (V, kin, adl, loc_sigma_pos, ...).
     `world` / `movers` may be passed directly instead of the file paths."""
+    if seed is not None:
+        params.setdefault("mon_seed", int(seed))
     P = make_params(**params)
     rng = np.random.default_rng(seed)
     if world is None:
+        if phase and t0_offset is None:
+            # randomised traffic phase (independent stream, see geometry)
+            _, m_nom = load_scenario(world_path, contract_path, mover_scale,
+                                     max_movers)
+            t0_offset = traffic_phase_offsets(m_nom, 0 if seed is None else seed)
         world, movers = load_scenario(world_path, contract_path, mover_scale,
-                                      max_movers)
+                                      max_movers, t0_offset=t0_offset)
     movers = movers or []
     cfg = VfhConfig(n_beams=n_beams, pred_lead=pred_lead, pred_dt=pred_dt,
                     baseline_horizon=baseline_horizon,
                     sense={"kind": sense, "sigma0": sigma0, "k_rng": k_rng,
-                           "fov_deg": fov_deg, "max_range": max_range})
+                           "fov_deg": fov_deg, "max_range": max_range},
+                    **(vfh_over or {}))
     dt, r = P["dt"], P["robot_radius"]
 
     if waypoints is None:
@@ -127,7 +144,7 @@ def run_mission(world_path, contract_path, algo="pvfh", sense="lidar",
         scatter_radius = meta.get("scatter_radius", 2.2)
 
     F = plan_formation(formation, grid_spacing, start, waypoints[0],
-                       scatter_radius=scatter_radius)
+                       scatter_radius=scatter_radius, K=n_robots)
     K, robot_offsets = F["K"], F["robot_offsets"]
 
     rows = []
@@ -218,6 +235,10 @@ def run_mission(world_path, contract_path, algo="pvfh", sense="lidar",
 
     S = summarize_run(rows, K, dt, r, reached_all)
     S["wall_s"] = time.perf_counter() - t0_wall
+    S["n_robots"] = K
+    S["t0_offset"] = ("" if t0_offset is None else
+                      ";".join(f"{x:.3f}" for x in np.atleast_1d(t0_offset)))
+    S["gate_stats"] = getattr(leader, "gate_stats", None)
     return rows, S
 
 

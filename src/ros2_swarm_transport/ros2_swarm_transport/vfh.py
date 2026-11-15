@@ -37,7 +37,8 @@ import numpy as np
 
 from .geometry import lidar_scan
 
-ALGOS = ("apf", "vfh", "fgm", "dwa", "mpc", "pvfh", "pvfh_filt", "pvfh_prob")
+ALGOS = ("apf", "vfh", "fgm", "dwa", "mpc", "pvfh", "pvfh_filt", "pvfh_prob",
+         "mppi", "nn")
 
 
 def _wrap_pi(a):
@@ -71,7 +72,7 @@ class VfhConfig:
                  n_beams=288, pred_lead=0.5, pred_dt=0.1,
                  sense=None, p_unknown=0.05, baseline_horizon=True,
                  rfilter=True, rfilter_q=0.08, fgm_alpha=2.0,
-                 dwa=None, mpc=None):
+                 dwa=None, mpc=None, mppi=None, nn=None):
         self.sense = {"kind": "lidar", "sigma0": 0.02, "k_rng": 0.03,
                       "fov_deg": 60.0, "max_range": float("inf"),
                       "frame": "body"}
@@ -101,6 +102,8 @@ class VfhConfig:
         self.fgm_alpha = fgm_alpha
         self.dwa = dict(dwa) if dwa else {}
         self.mpc = dict(mpc) if mpc else {}
+        self.mppi = dict(mppi) if mppi else {}
+        self.nn = dict(nn) if nn else {}
         # per-mission filter state (range_filter.m keeps it in a persistent);
         # a new VfhConfig, or reset_filters(), starts a new mission.
         self.filters = {}
@@ -633,6 +636,54 @@ def local_mpc(sc, pos, goal, margin, cfg: VfhConfig, prev_heading, V):
     return np.array([math.cos(phi), math.sin(phi)])
 
 
+def local_mppi(sc, pos, goal, margin, cfg: VfhConfig, prev_heading, V):
+    """Model Predictive Path Integral control (Williams et al., ICRA 2016 /
+    T-RO 2018), the sampling-based MPC of the ROS 2 Nav2 MPPI controller,
+    on the same scan obstacle points as DWA and the lattice MPC. Unicycle
+    rollouts at the mission speed V; the control is the turn-rate sequence.
+    The nominal sequence is warm-started (shifted) between steps; the noise
+    has its own seeded stream so it never perturbs the sensor-noise stream."""
+    P = {"N": 256, "T": 2.4, "dt": 0.2, "sigma_w": 0.8, "lam": 0.3,
+         "w_max": 1.5, "d_safe": 0.5, "w_obs": 6.0, "w_coll": 50.0,
+         "w_goal": 1.0, "w_head": 0.3, "w_smooth": 0.05, "tau": 1.0,
+         "seed": 0}
+    P.update(cfg.mppi)
+    H = int(round(P["T"] / P["dt"]))
+    st = cfg.filters.get("mppi")
+    if st is None or len(st["u"]) != H:
+        st = {"u": np.zeros(H), "rng": np.random.default_rng([int(P["seed"]), 31337])}
+        cfg.filters["mppi"] = st
+    u_nom = np.append(st["u"][1:], st["u"][-1])
+    N = int(P["N"])
+    eps_ = st["rng"].normal(0.0, P["sigma_w"], size=(N, H))
+    eps_[0] = 0.0                                   # keep the nominal itself
+    U = np.clip(u_nom[None, :] + eps_, -P["w_max"], P["w_max"])
+    th = prev_heading + np.cumsum(U * P["dt"], axis=1)
+    px = pos[0] + np.cumsum(V * np.cos(th) * P["dt"], axis=1)
+    py = pos[1] + np.cumsum(V * np.sin(th) * P["dt"], axis=1)
+    ox, oy = _obstacle_points(sc, pos)
+    if len(ox) == 0:
+        clr = np.full((N, H), np.inf)
+    else:
+        d2 = (px[:, :, None] - ox) ** 2 + (py[:, :, None] - oy) ** 2
+        clr = np.sqrt(d2.min(axis=2)) - margin
+    dgoal = np.hypot(goal[0] - px, goal[1] - py)
+    d0 = math.hypot(goal[0] - pos[0], goal[1] - pos[1])
+    gb = np.arctan2(goal[1] - py[:, -1], goal[0] - px[:, -1])
+    cost = (P["w_goal"] * (dgoal[:, -1] - d0)
+            + P["w_head"] * np.abs(_wrap_pi(gb - th[:, -1]))
+            + P["w_obs"] * np.mean(np.maximum(0.0, P["d_safe"] - clr) ** 2, axis=1)
+            + P["w_coll"] * np.mean(clr <= 0, axis=1)
+            + P["w_smooth"] * np.mean(np.abs(np.diff(U, axis=1)), axis=1))
+    beta = cost.min()
+    w = np.exp(-(cost - beta) / max(P["lam"], 1e-6))
+    w /= w.sum()
+    u_new = np.clip(u_nom + w @ eps_, -P["w_max"], P["w_max"])
+    st["u"] = u_new
+    phi = prev_heading + max(min(u_new[0] * P["tau"], math.pi / 2), -math.pi / 2)
+    return np.array([math.cos(phi), math.sin(phi)])
+
+
 # ---------------------------------------------------------------------------
 # algorithm dispatch (steering_dispatch.m port)
 # ---------------------------------------------------------------------------
@@ -640,6 +691,11 @@ def local_mpc(sc, pos, goal, margin, cfg: VfhConfig, prev_heading, V):
 def _dispatch(pos, goal, w_att, world, movers, t_now, margin, cfg: VfhConfig,
               algo, eps, prev_heading, rng, forming, V):
     algo = algo.lower()
+    if forming and algo in ("mppi", "nn"):
+        # MPPI keeps a warm-start per controller and the learned policy is
+        # trained for the rigid transport phase only: both form up with the
+        # lattice MPC, so the comparison is on the transport phase.
+        algo = "mpc"
     pos = np.asarray(pos, dtype=float)
     goal = np.asarray(goal, dtype=float)
     if algo == "apf":
@@ -673,13 +729,18 @@ def _dispatch(pos, goal, w_att, world, movers, t_now, margin, cfg: VfhConfig,
                       and cfg.sense.get("kind", "lidar") == "lidar")
         return pvfh_prob(pos, world, movers, t_now, goal, margin, cfg, eps,
                          prev_heading, rng, use_filter)
-    if algo in ("fgm", "dwa", "mpc"):
+    if algo in ("fgm", "dwa", "mpc", "mppi", "nn"):
         sc = _sense(pos, world, movers, t_now, cfg, margin,
                     cfg.baseline_horizon, prev_heading, rng)
         if algo == "fgm":
             return local_fgm(sc, pos, goal, margin, cfg, prev_heading)
         if algo == "dwa":
             return local_dwa(sc, pos, goal, margin, cfg, prev_heading, V)
+        if algo == "mppi":
+            return local_mppi(sc, pos, goal, margin, cfg, prev_heading, V)
+        if algo == "nn":
+            from .neural import nn_steer          # numpy inference, no torch
+            return nn_steer(sc, pos, goal, margin, cfg, prev_heading, V)
         return local_mpc(sc, pos, goal, margin, cfg, prev_heading, V)
     raise ValueError(f"unknown algo {algo!r}")
 
