@@ -1,0 +1,25 @@
+ci,params,mean_cost,reached,n,mean_time,contact_steps,reject_steps
+0,{},102.57142857142867,7,7,65.42857142857153,116,280
+1,"{""react_gap"": 0.8693, ""threshold"": 0.3364, ""hysteresis_weight"": 0.597, ""smooth_window"": 3, ""danger_dist_base"": 1.7075}",133.6714285714284,7,7,70.19999999999985,196,523
+2,"{""react_gap"": 1.1325, ""threshold"": 0.1961, ""hysteresis_weight"": 0.429, ""smooth_window"": 3, ""danger_dist_base"": 1.9832}",140.61428571428556,6,7,86.39999999999917,57,1211
+3,"{""react_gap"": 1.6091, ""threshold"": 0.3543, ""hysteresis_weight"": 0.7616, ""smooth_window"": 3, ""danger_dist_base"": 1.6201}",129.82857142857165,6,7,75.88571428571386,54,1250
+4,"{""react_gap"": 1.07, ""threshold"": 0.1969, ""hysteresis_weight"": 1.1064, ""smooth_window"": 5, ""danger_dist_base"": 1.354}",135.1142857142859,6,7,79.09999999999954,56,1368
+5,"{""react_gap"": 1.1631, ""threshold"": 0.3359, ""hysteresis_weight"": 0.9299, ""smooth_window"": 3, ""danger_dist_base"": 0.834}",94.25714285714311,7,7,62.657142857143114,101,192
+6,"{""react_gap"": 1.604, ""threshold"": 0.4969, ""hysteresis_weight"": 0.2116, ""smooth_window"": 3, ""danger_dist_base"": 1.0106}",142.52857142857155,6,7,79.45714285714233,78,1408
+7,"{""react_gap"": 0.733, ""threshold"": 0.3194, ""hysteresis_weight"": 1.0263, ""smooth_window"": 5, ""danger_dist_base"": 0.9524}",125.02857142857158,7,7,69.61428571428586,180,279
+8,"{""react_gap"": 1.2776, ""threshold"": 0.2, ""hysteresis_weight"": 0.6946, ""smooth_window"": 5, ""danger_dist_base"": 0.8968}",137.92857142857162,6,7,75.71428571428525,83,1248
+9,"{""react_gap"": 0.7598, ""threshold"": 0.4427, ""hysteresis_weight"": 0.7896, ""smooth_window"": 3, ""danger_dist_base"": 1.0787}",136.52857142857175,7,7,62.67142857142888,242,330
+10,"{""react_gap"": 0.9961, ""threshold"": 0.376, ""hysteresis_weight"": 0.6446, ""smooth_window"": 3, ""danger_dist_base"": 1.7022}",158.84285714285696,6,7,81.77142857142776,120,1550
+11,"{""react_gap"": 1.0747, ""threshold"": 0.2332, ""hysteresis_weight"": 1.1682, ""smooth_window"": 7, ""danger_dist_base"": 0.617}",149.98571428571412,7,7,73.89999999999985,247,386
+12,"{""react_gap"": 1.7636, ""threshold"": 0.3952, ""hysteresis_weight"": 0.9015, ""smooth_window"": 7, ""danger_dist_base"": 0.839}",158.4999999999997,6,7,90.17142857142758,95,1436
+13,"{""react_gap"": 1.2941, ""threshold"": 0.4166, ""hysteresis_weight"": 0.5411, ""smooth_window"": 7, ""danger_dist_base"": 1.3841}",140.27142857142852,6,7,82.75714285714216,60,1380
+14,"{""react_gap"": 1.4214, ""threshold"": 0.46, ""hysteresis_weight"": 1.059, ""smooth_window"": 5, ""danger_dist_base"": 1.1254}",143.61428571428593,6,7,78.79999999999953,93,1243
+15,"{""react_gap"": 1.882, ""threshold"": 0.3009, ""hysteresis_weight"": 1.1166, ""smooth_window"": 5, ""danger_dist_base"": 1.3081}",216.37142857142868,5,7,93.15714285714166,167,2419
+16,"{""react_gap"": 0.7771, ""threshold"": 0.3158, ""hysteresis_weight"": 1.0233, ""smooth_window"": 7, ""danger_dist_base"": 1.1903}",108.20000000000026,7,7,66.7428571428574,133,242
+17,"{""react_gap"": 0.4191, ""threshold"": 0.4627, ""hysteresis_weight"": 0.432, ""smooth_window"": 7, ""danger_dist_base"": 1.3592}",144.57142857142887,6,7,74.64285714285678,106,1329
+18,"{""react_gap"": 1.4493, ""threshold"": 0.4038, ""hysteresis_weight"": 0.3823, ""smooth_window"": 7, ""danger_dist_base"": 1.0942}",181.10000000000005,5,7,93.38571428571301,55,2146
+19,"{""react_gap"": 1.1627, ""threshold"": 0.154, ""hysteresis_weight"": 0.5109, ""smooth_window"": 3, ""danger_dist_base"": 1.0088}",148.41428571428585,6,7,78.75714285714234,102,1389
+20,"{""react_gap"": 1.9184, ""threshold"": 0.3615, ""hysteresis_weight"": 0.23, ""smooth_window"": 7, ""danger_dist_base"": 1.979}",172.57142857142864,5,7,93.59999999999876,43,1780
+21,"{""react_gap"": 1.4404, ""threshold"": 0.2543, ""hysteresis_weight"": 0.494, ""smooth_window"": 5, ""danger_dist_base"": 0.6297}",140.5428571428574,6,7,76.3857142857139,79,1463
+22,"{""react_gap"": 0.6106, ""threshold"": 0.2887, ""hysteresis_weight"": 0.7061, ""smooth_window"": 7, ""danger_dist_base"": 0.8596}",97.52857142857147,7,7,70.78571428571432,80,272
+23,"{""react_gap"": 0.7576, ""threshold"": 0.4975, ""hysteresis_weight"": 0.7294, ""smooth_window"": 5, ""danger_dist_base"": 0.9074}",138.3714285714289,7,7,64.25714285714322,243,328

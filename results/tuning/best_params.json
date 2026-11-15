@@ -1,0 +1,146 @@
+{
+  "vfh": {
+    "params": {
+      "react_gap": 1.1631,
+      "threshold": 0.3359,
+      "hysteresis_weight": 0.9299,
+      "smooth_window": 3,
+      "danger_dist_base": 0.834
+    },
+    "vfh_over": {
+      "react_gap": 1.1631,
+      "threshold": 0.3359,
+      "hysteresis_weight": 0.9299,
+      "smooth_window": 3,
+      "danger_dist_base": 0.834
+    },
+    "mean_cost": 94.25714285714311,
+    "default_cost": 102.57142857142867,
+    "configs": 24,
+    "missions_per_config": 7,
+    "wall_s": 318.3
+  },
+  "pvfh_prob": {
+    "params": {
+      "react_gap": 0.7875,
+      "threshold": 0.3983,
+      "hysteresis_weight": 0.3565,
+      "smooth_window": 7,
+      "danger_dist_base": 1.7746,
+      "rfilter_q": 0.1316
+    },
+    "vfh_over": {
+      "react_gap": 0.7875,
+      "threshold": 0.3983,
+      "hysteresis_weight": 0.3565,
+      "smooth_window": 7,
+      "danger_dist_base": 1.7746,
+      "rfilter_q": 0.1316
+    },
+    "mean_cost": 121.71428571428605,
+    "default_cost": 126.12857142857165,
+    "configs": 24,
+    "missions_per_config": 7,
+    "wall_s": 380.6
+  },
+  "fgm": {
+    "params": {
+      "fgm_alpha": 5.6577,
+      "react_gap": 0.4181
+    },
+    "vfh_over": {
+      "fgm_alpha": 5.6577,
+      "react_gap": 0.4181
+    },
+    "mean_cost": 97.12857142857163,
+    "default_cost": 271.14285714285734,
+    "configs": 24,
+    "missions_per_config": 7,
+    "wall_s": 395.7
+  },
+  "dwa": {
+    "params": {
+      "w_max": 1.0223,
+      "T": 1.8184,
+      "a_h": 0.4797,
+      "a_c": 0.4969,
+      "tau": 1.3062,
+      "clr_cap": 1.3811,
+      "T_adm": 1.3579
+    },
+    "vfh_over": {
+      "dwa": {
+        "w_max": 1.0223,
+        "T": 1.8184,
+        "a_h": 0.4797,
+        "a_c": 0.4969,
+        "tau": 1.3062,
+        "clr_cap": 1.3811,
+        "T_adm": 1.3579
+      }
+    },
+    "mean_cost": 61.88571428571475,
+    "default_cost": 88.95714285714334,
+    "configs": 24,
+    "missions_per_config": 7,
+    "wall_s": 387.9
+  },
+  "mpc": {
+    "params": {
+      "seg_T": 1.1127,
+      "d_safe": 0.2747,
+      "w_obs": 4.1258,
+      "lev": 1.3489,
+      "T_hard": 1.344,
+      "tau": 0.5386
+    },
+    "vfh_over": {
+      "mpc": {
+        "seg_T": 1.1127,
+        "d_safe": 0.2747,
+        "w_obs": 4.1258,
+        "T_hard": 1.344,
+        "tau": 0.5386,
+        "levels": [
+          -1.6187,
+          -0.8093,
+          0.0,
+          0.8093,
+          1.6187
+        ]
+      }
+    },
+    "mean_cost": 79.10000000000035,
+    "default_cost": 123.07142857142897,
+    "configs": 24,
+    "missions_per_config": 7,
+    "wall_s": 611.2
+  },
+  "mppi": {
+    "params": {
+      "sigma_w": 1.3907,
+      "lam": 0.8866,
+      "T": 3.5814,
+      "d_safe": 0.6345,
+      "w_obs": 6.4308,
+      "w_head": 0.5444,
+      "tau": 0.8499
+    },
+    "vfh_over": {
+      "mppi": {
+        "sigma_w": 1.3907,
+        "lam": 0.8866,
+        "T": 3.5814,
+        "d_safe": 0.6345,
+        "w_obs": 6.4308,
+        "w_head": 0.5444,
+        "tau": 0.8499
+      }
+    },
+    "mean_cost": 84.32857142857162,
+    "default_cost": 119.04285714285754,
+    "configs": 24,
+    "missions_per_config": 7,
+    "wall_s": 670.5
+  }
+}
