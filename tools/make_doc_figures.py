@@ -39,7 +39,7 @@ COL = {"vfh": "#2a78d6", "pvfh": "#eb6834", "pvfh_filt": "#1baf7a",
        "dwa": "#eda100", "fgm": "#e87ba4", "mpc": "#008300",
        "pvfh_prob": "#4a3aa7", "apf": "#e34948"}
 NAME = {"apf": "APF", "vfh": "VFH", "fgm": "FGM", "dwa": "DWA", "mpc": "MPC",
-        "pvfh": "pVFH", "pvfh_filt": "pVFH+F", "pvfh_prob": "P-VFH"}
+        "pvfh": "pVFH", "pvfh_filt": "pVFH+F", "pvfh_prob": "PA-VFH-K"}
 C_M, C_P, C_X = "#2a78d6", "#eb6834", "#1baf7a"     # MATLAB, Python, physics
 INK, MUTED, GRID = "#0b0b0b", "#898781", "#e6e5e0"
 plt.rcParams.update({
@@ -381,7 +381,7 @@ def fig_e2():
             if i == 1:
                 a.set_xlabel("range noise sigma0 (m)")
     ax[0, 0].legend(fontsize=8)
-    fig.suptitle("E2 - noise ablation ladder: horizon (VFH->pVFH), filter (pVFH->pVFH+F), kernel (pVFH+F->P-VFH); 20 seeds",
+    fig.suptitle("E2 - noise ablation ladder: horizon (VFH->pVFH), filter (pVFH->pVFH+F), kernel (pVFH+F->PA-VFH-K); 20 seeds",
                  fontsize=9, y=1.0)
     save(fig, "e2_noise_both_stacks.png")
 
@@ -561,7 +561,7 @@ def fig_mujoco_summary():
 
 def fig_mujoco_kin():
     names = [("V3_mpc_square_on_top_s1_nokin", "V1_mpc_square_on_top_s1", "MPC"),
-             ("V3_pvfh_prob_square_on_top_s1_nokin", "V1_pvfh_prob_square_on_top_s1", "P-VFH")]
+             ("V3_pvfh_prob_square_on_top_s1_nokin", "V1_pvfh_prob_square_on_top_s1", "PA-VFH-K")]
     if _mj(names[0][0])[0] is None:
         print("  (skip mujoco kin)"); return
     fig, ax = plt.subplots(1, 2, figsize=(9.6, 3.2), sharey=True)

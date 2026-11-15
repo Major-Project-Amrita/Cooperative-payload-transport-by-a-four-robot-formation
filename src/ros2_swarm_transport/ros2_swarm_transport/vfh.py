@@ -6,7 +6,8 @@ Port of the corrected (October 2026 audit) MATLAB reference:
     sensor_noise.m            -> sensor_noise
     apf_obstacle_repulsion.m  -> apf_obstacle_repulsion (beam width aware)
     range_filter.m            -> RangeFilter / range_filter
-    pvfh_prob.m               -> pvfh_prob          (P-VFH, the proposal)
+    pvfh_prob.m               -> pvfh_prob          (PA-VFH-K, formerly 'P-VFH'; the proposed
+                                                    algorithm is now PA-VFH, see pavfh())
     steering_dispatch.m       -> steering_rigid / steering_point and the laws
                                  apf, vfh, fgm, dwa, mpc, pvfh, pvfh_filt
 
@@ -38,7 +39,13 @@ import numpy as np
 from .geometry import lidar_scan
 
 ALGOS = ("apf", "vfh", "fgm", "dwa", "mpc", "pvfh", "pvfh_filt", "pvfh_prob",
-         "mppi", "nn")
+         "mppi", "nn", "pavfh", "pavfh_nonn")
+# Display names. The proposed algorithm is PA-VFH (key "pavfh"); the former
+# "PA-VFH-K" (key "pvfh_prob", kept for the replication data) is PA-VFH-K.
+DISPLAY = {"apf": "APF", "vfh": "VFH", "fgm": "FGM", "dwa": "DWA", "mpc": "MPC",
+           "mppi": "MPPI", "pvfh": "pVFH", "pvfh_filt": "pVFH+F",
+           "pvfh_prob": "PA-VFH-K", "nn": "NN (DAgger)", "pavfh": "PA-VFH",
+           "pavfh_nonn": "PA-VFH (no NN)"}
 
 
 def _wrap_pi(a):
@@ -354,7 +361,7 @@ def _vfh_from_scan(ranges, angles, pos, goal, margin, cfg: VfhConfig, eps,
 
 
 # ---------------------------------------------------------------------------
-# P-VFH (pvfh_prob.m port)
+# PA-VFH-K (pvfh_prob.m port)
 # ---------------------------------------------------------------------------
 
 def pvfh_prob(pos, world, movers, t_now, goal, margin, v: VfhConfig, eps,
@@ -422,6 +429,105 @@ def pvfh_prob(pos, world, movers, t_now, goal, margin, v: VfhConfig, eps,
                      "u_sector": u_sec, "hist": hist, "ranges": ranges,
                      "angles": angles, "sigma_hist": sigma_hist,
                      "sigma_b": sig_b, "chosen_heading": chosen}
+    return vec
+
+
+# ---------------------------------------------------------------------------
+# PA-VFH: the proposed hybrid (neural predictive occupancy inside the VFH+
+# pipeline). See docs/PA_VFH.md.
+# ---------------------------------------------------------------------------
+
+def _sector_min(ranges, angles, S, fill):
+    out = np.full(S, np.inf)
+    np.minimum.at(out, _sector_index(angles, S), ranges)
+    observed = np.isfinite(out)
+    return np.where(observed, out, fill), observed
+
+
+def pavfh(pos, world, movers, t_now, goal, margin, v: VfhConfig, eps,
+          prev_heading, rng=None, use_filter=True, neural=True, V=0.6,
+          return_info=False, keep_history=True):
+    """PA-VFH steering.
+
+    1. ONE instantaneous noisy scan (movers where they are now: no access to
+       the traffic contract or any mover's future);
+    2. per-beam Kalman range filter (as in PA-VFH-K) -> posterior mean/sigma;
+    3. per-sector danger u:
+         neural=True  : learned predictive occupancy (neural.occupancy_forward)
+                        from the last 3 filtered scans + ego-motion; trained
+                        to reproduce the danger an oracle would compute from
+                        the TRUE ranges over the prediction horizon;
+         neural=False : the analytic posterior-expected kernel on the same
+                        instantaneous scan (the ablation "PA-VFH (no NN)");
+    4. VFH+ enlargement, smoothing, threshold, valley + hysteresis and the
+       APF reflex, unchanged from the histogram family."""
+    S = v.num_sectors
+    sc = _sense(pos, world, movers, t_now, v, margin, False, prev_heading, rng)
+    ranges, angles, valid, drop = (sc["ranges"], sc["angles"], sc["valid"],
+                                   sc["drop"])
+    max_sense = sc["max_sense"]
+    sig_b = _per_beam_sigma(ranges, v)
+    if use_filter and bool(np.all(valid)):
+        ranges, sig_b = range_filter(ranges, sig_b, t_now, v.rfilter_q,
+                                     v.filters, "pavfh")
+    sigma_hist = v.sigma_hist(margin)
+    p_unk = float(v.p_unknown)
+    r_geom = margin if v.enlarge else 0.0
+    d_meas = np.where(valid, ranges, max_sense)
+    rsec, observed = _sector_min(np.minimum(d_meas, max_sense), angles, S, max_sense)
+    sig_sec = np.zeros(S)
+    np.maximum.at(sig_sec, _sector_index(angles, S), sig_b)
+
+    st = v.filters.get("pavfh_hist")
+    if st is None or t_now < st["t"] - 1e-9 or t_now > st["t"] + 0.5:
+        st = {"frames": [], "t": t_now, "pos": np.asarray(pos, float).copy()}
+    frames = [rsec] + st["frames"][:2]
+    # own closing speed toward each sector from the last displacement
+    sec_ang = -math.pi + 2 * math.pi * (np.arange(S) + 0.5) / S
+    dt = max(t_now - st["t"], 1e-3) if st["frames"] else 1.0
+    vel = (np.asarray(pos, float) - st["pos"]) / dt if st["frames"] else \
+        V * np.array([math.cos(prev_heading), math.sin(prev_heading)])
+    ego = vel[0] * np.cos(sec_ang) + vel[1] * np.sin(sec_ang)
+    if keep_history:
+        v.filters["pavfh_hist"] = {"frames": frames, "t": t_now,
+                                   "pos": np.asarray(pos, float).copy()}
+
+    from . import neural as _nn
+    x = _nn.occupancy_features(frames, sig_sec, observed, ego, margin)
+    rec = v.nn.get("occ_record") if keep_history else None
+    if rec is not None:
+        # training label: oracle danger from the TRUE ranges over the horizon
+        clean, ang_c, _ = scan_ranges_dyn(pos, world, movers, t_now, len(ranges),
+                                          max_sense, v, boresight=prev_heading,
+                                          pred_lead=v.pred_lead)
+        rtrue, _ = _sector_min(np.minimum(clean, max_sense), ang_c, S, max_sense)
+        u_true = np.where(rtrue < max_sense - 1e-6,
+                          np.exp(-(rtrue ** 2) / (2 * sigma_hist ** 2)), 0.0)
+        rec.append((x.astype(np.float32), u_true.astype(np.float32)))
+    if neural:
+        u_sec = _nn.occupancy_forward(_nn.load_model(v.nn.get("occ_model", "pavfh_occupancy")), x)
+    else:
+        u_beam = expected_kernel(d_meas, sig_b, sigma_hist)
+        u_beam = np.where(valid, u_beam, p_unk)
+        u_sec = np.zeros(S)
+        np.maximum.at(u_sec, _sector_index(angles, S), u_beam)
+    u_sec = np.where(observed, u_sec, np.maximum(u_sec, p_unk))
+
+    hist = u_sec.copy()
+    if r_geom > 0:
+        dsec = 2 * math.pi / S
+        for si in np.where(u_sec > p_unk)[0]:
+            d = float(rsec[si])
+            gamma = math.asin(min(1.0, r_geom / max(d, r_geom)))
+            kb = int(math.ceil(gamma / dsec))
+            idx = np.arange(si - kb, si + kb + 1) % S
+            hist[idx] = np.maximum(hist[idx], u_sec[si])
+    hist = _smooth_hist(hist, v.smooth_window, v.circular_smooth)
+    chosen = _select_valley(hist, pos, goal, v, prev_heading)
+    vec = _finish(chosen, ranges, angles, sc["danger"], sc["dth"], v, eps,
+                  prev_heading)
+    if return_info:
+        return vec, {"u_sector": u_sec, "hist": hist, "chosen_heading": chosen}
     return vec
 
 
@@ -724,6 +830,16 @@ def _dispatch(pos, goal, w_att, world, movers, t_now, margin, cfg: VfhConfig,
         return _vfh_from_scan(ranges, sc["angles"], pos, goal, margin, cfg,
                               eps, prev_heading, sc["dth"], sc["max_sense"],
                               sc["danger"])
+    if algo in ("pavfh", "pavfh_nonn"):
+        if forming:
+            # forming: per-robot point steering on the instantaneous scan with
+            # the analytic kernel; no filter, no history (per-robot calls
+            # must not touch the transport-phase state), no contract
+            return pavfh(pos, world, movers, t_now, goal, margin, cfg, eps,
+                         prev_heading, rng, False, False, V, keep_history=False)
+        use_filter = cfg.rfilter and cfg.sense.get("kind", "lidar") == "lidar"
+        return pavfh(pos, world, movers, t_now, goal, margin, cfg, eps,
+                     prev_heading, rng, use_filter, algo == "pavfh", V)
     if algo == "pvfh_prob":
         use_filter = (not forming and cfg.rfilter
                       and cfg.sense.get("kind", "lidar") == "lidar")

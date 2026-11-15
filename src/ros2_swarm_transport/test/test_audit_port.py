@@ -37,6 +37,10 @@ def wall_world(x=1.5):
 # ---- (a) ------------------------------------------------------------------
 @pytest.mark.parametrize("algo", ALGOS)
 def test_no_static_contact_full_mission(algo):
+    weights = {"nn": "policy_dagger.npz", "pavfh": "pavfh_occupancy.npz"}.get(algo)
+    if weights and not os.path.exists(os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models", weights)):
+        pytest.skip(f"{algo}: weights not trained")
     rows, S = run_mission(SDF, JSON, algo=algo, seed=1, verbose=False)
     assert S["coll_static"] == 0
     # a blocked body never changes heading into a colliding pose: every

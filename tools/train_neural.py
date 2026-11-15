@@ -3,6 +3,7 @@
 
     python3 tools/train_neural.py policy  --jobs 2     # DAgger, lattice-MPC expert
     python3 tools/train_neural.py monitor --jobs 2     # learned monitor + conformal q
+    python3 tools/train_neural.py occupancy --jobs 2   # PA-VFH predictive occupancy
 
 Data split (fixed, so the evaluation is honest):
   TRAIN worlds   rand01..rand05, swarm_world_dynamic, plaza
@@ -54,6 +55,17 @@ def rollout(args):
     rec = []
     kw = dict(algo=algo, seed=seed, sigma0=sigma0, formation=form,
               grid_spacing=sp, verbose=False, phase=True, timesteps=1500)
+    if kind == "occupancy":
+        kw.update(vfh_over={"nn": {"occ_record": rec, "occ_model": model}})
+        try:
+            _, S = run_mission(sdf, js, **kw)
+            ok = bool(S["reached_goal"])
+        except Exception as e:                   # noqa: BLE001
+            print(f"rollout failed {args}: {e}", flush=True)
+            ok = False
+        X = np.array([r[0] for r in rec], dtype=np.float32)
+        Y = np.array([r[1] for r in rec], dtype=np.float32)
+        return dict(X=X, Y=Y, ok=ok, run=args)
     if kind == "policy":
         kw.update(nn_record=rec, nn_beta=beta, nn_model=model)
     else:
@@ -142,6 +154,97 @@ def build_monitor():
                            x[:, 1].min(1, keepdim=True).values], 1)
             return self.h3(F.relu(self.h2(F.relu(self.h1(z))))).squeeze(1)
     return Monitor()
+
+
+def build_occupancy(cin=6):
+    import torch.nn as nn
+
+    class Occ(nn.Module):
+        def __init__(self):
+            super().__init__()
+            cc = dict(kernel_size=5, padding=2, padding_mode="circular")
+            self.c1 = nn.Conv1d(cin, 32, **cc)
+            self.c2 = nn.Conv1d(32, 32, **cc)
+            self.c3 = nn.Conv1d(32, 32, **cc)
+            self.out = nn.Conv1d(32, 1, kernel_size=1)
+
+        def forward(self, x):
+            import torch.nn.functional as F
+            h = F.relu(self.c3(F.relu(self.c2(F.relu(self.c1(x))))))
+            return self.out(h).squeeze(1)          # logits (B, S)
+    return Occ()
+
+
+def fit_occupancy(X, Y, epochs, seed=0):
+    import torch
+    torch.manual_seed(seed)
+    torch.set_num_threads(max(1, int(os.environ.get("TORCH_THREADS", "1"))))
+    n = len(Y)
+    idx = np.random.default_rng(seed).permutation(n)
+    nv = max(1, n // 10)
+    va, tr = idx[:nv], idx[nv:]
+    Xt, Yt = torch.as_tensor(X), torch.as_tensor(Y)
+    model = build_occupancy(X.shape[1])
+    opt = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
+    sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, epochs)
+    # sectors near the decision threshold matter most: up-weight u > 0.1
+    for ep in range(epochs):
+        perm = np.random.default_rng(seed + ep).permutation(tr)
+        for b in range(0, len(perm), 256):
+            j = perm[b:b + 256]
+            opt.zero_grad()
+            w = 1.0 + 3.0 * (Yt[j] > 0.1).float()
+            loss = torch.nn.functional.binary_cross_entropy_with_logits(
+                model(Xt[j]), Yt[j], weight=w)
+            loss.backward()
+            opt.step()
+        sched.step()
+    with torch.no_grad():
+        pv = torch.sigmoid(model(Xt[va])).numpy()
+    yv = Y[va]
+    thr = 0.3
+    stats = dict(val_mae=float(np.abs(pv - yv).mean()),
+                 val_block_agree=float(((pv > thr) == (yv > thr)).mean()),
+                 val_missed_block=float(((pv <= thr) & (yv > thr)).sum() / max((yv > thr).sum(), 1)))
+    return model, stats
+
+
+def cmd_occupancy(a):
+    os.makedirs(MODELS, exist_ok=True)
+    rng = np.random.default_rng(3)
+    path = os.path.join(MODELS, "pavfh_occupancy.npz")
+    log = dict(rounds=[], train_worlds=TRAIN_WORLDS,
+               train_teams=[f"{f}@{s}" for f, s in TRAIN_TEAMS],
+               label="oracle danger exp(-d^2/2 sigma_h^2) of the true sector range "
+                     "minimum over the prediction horizon (0.5 s)")
+    XS, YS = [], []
+    seed = 701
+    for rnd, driver in enumerate(("pavfh_nonn", "pavfh")):
+        jobs = []
+        for w in TRAIN_WORLDS:
+            for form, sp in TRAIN_TEAMS:
+                for _ in range(a.per_cell):
+                    jobs.append(("occupancy", w, form, sp, seed,
+                                 float(rng.choice([0.02, 0.10, 0.20])), 0.0, path,
+                                 driver, "truth"))
+                    seed += 1
+        t0 = time.time()
+        R = run_pool(jobs, a.jobs)
+        for r in R:
+            if len(r["Y"]):
+                XS.append(r["X"])
+                YS.append(r["Y"])
+        X, Y = np.concatenate(XS), np.concatenate(YS)
+        model, st = fit_occupancy(X, Y, a.epochs, seed=rnd)
+        export(model, path, {})
+        from ros2_swarm_transport import neural
+        neural._CACHE.clear()
+        rec = dict(round=rnd, driver=driver, rollouts=len(R),
+                   rollout_reach=float(np.mean([r["ok"] for r in R])),
+                   samples=int(len(Y)), wall_s=round(time.time() - t0, 1), **st)
+        log["rounds"].append(rec)
+        print(json.dumps(rec), flush=True)
+        json.dump(log, open(os.path.join(MODELS, "pavfh_occupancy.json"), "w"), indent=2)
 
 
 def export(model, path, extra):
@@ -336,10 +439,10 @@ def cmd_monitor(a):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("what", choices=["policy", "monitor"])
+    ap.add_argument("what", choices=["policy", "monitor", "occupancy"])
     ap.add_argument("--jobs", type=int, default=1)
     ap.add_argument("--iters", type=int, default=4)
     ap.add_argument("--per-cell", type=int, default=2)
     ap.add_argument("--epochs", type=int, default=25)
     a = ap.parse_args()
-    {"policy": cmd_policy, "monitor": cmd_monitor}[a.what](a)
+    {"policy": cmd_policy, "monitor": cmd_monitor, "occupancy": cmd_occupancy}[a.what](a)

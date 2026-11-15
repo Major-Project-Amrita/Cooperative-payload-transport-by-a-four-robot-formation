@@ -40,7 +40,7 @@ function [ranges_noisy, valid, drop] = sensor_noise(ranges, angles, v, rng)
 %   All algorithm variants share THIS model, so the paper's comparison
 %   isolates the steering law, not the sensing. The deterministic and
 %   probabilistic consumers differ only in what they DO with the same
-%   measured ranges: VFH puts the raw number into the histogram; P-VFH keeps
+%   measured ranges: VFH puts the raw number into the histogram; PA-VFH-K keeps
 %   the per-bearing uncertainty and accumulates occupancy probability.
 %
 %   See also SCAN_RANGES_DYN, PVFH_PROB.

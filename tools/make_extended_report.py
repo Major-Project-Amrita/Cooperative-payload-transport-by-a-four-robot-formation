@@ -27,9 +27,10 @@ FIG = os.path.join(RES, "figures_ext")
 DOC = os.path.join(ROOT, "docs", "EXTENDED_RESULTS.md")
 R = 0.18
 NAME = {"apf": "APF", "vfh": "VFH", "fgm": "FGM", "dwa": "DWA", "mpc": "MPC",
-        "mppi": "MPPI", "pvfh": "pVFH", "pvfh_filt": "pVFH+F", "pvfh_prob": "P-VFH",
-        "nn": "NN (DAgger)"}
-ORDER = ["apf", "vfh", "fgm", "dwa", "mpc", "mppi", "pvfh", "pvfh_filt", "pvfh_prob", "nn"]
+        "mppi": "MPPI", "pvfh": "pVFH", "pvfh_filt": "pVFH+F", "pvfh_prob": "PA-VFH-K",
+        "nn": "NN (DAgger)", "pavfh": "PA-VFH", "pavfh_nonn": "PA-VFH (no NN)"}
+ORDER = ["apf", "vfh", "fgm", "dwa", "mpc", "mppi", "pvfh", "pvfh_filt", "pvfh_prob", "nn",
+         "pavfh_nonn", "pavfh"]
 # fixed categorical slot per planner (reference palette, light mode)
 SLOT = {"vfh": "#2a78d6", "fgm": "#eb6834", "dwa": "#1baf7a", "mpc": "#eda100",
         "mppi": "#e87ba4", "pvfh": "#008300", "pvfh_prob": "#6250d6", "nn": "#e34948"}

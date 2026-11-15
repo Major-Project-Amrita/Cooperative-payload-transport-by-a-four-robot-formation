@@ -128,7 +128,7 @@ def free_cfg():
 
 
 def test_pvfh_prob_open_corridor(free_cfg):
-    """Free space: P-VFH heads for the goal like the deterministic stack."""
+    """Free space: PA-VFH-K heads for the goal like the deterministic stack."""
     pos, goal = np.array([-2.0, 0.0]), np.array([2.0, 0.0])
     vec = pvfh_prob(pos, flat_world(), [], 0.0, goal, 0.18, free_cfg, EPS, 0.0,
                     np.random.default_rng(0))

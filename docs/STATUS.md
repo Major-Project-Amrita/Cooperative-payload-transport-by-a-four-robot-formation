@@ -1,5 +1,7 @@
 # Status — 3 October 2026, 04:00
 
+> **Nomenclature (Nov 2026):** the proposed algorithm is now **PA-VFH** (neural predictive occupancy inside the VFH+ pipeline; see [PA_VFH.md](PA_VFH.md)). The algorithm this document called "P-VFH" (code key `pvfh_prob`) is renamed **PA-VFH-K** throughout; its data and run names are unchanged.
+
 What is finished, what was stopped part-way, and the exact commands to
 complete it. Run everything from a terminal; each command is resumable (it
 skips what is already done), so nothing below repeats finished work.

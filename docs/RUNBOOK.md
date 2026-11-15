@@ -1,5 +1,7 @@
 # Runbook — from a clean terminal to every result in the documentation
 
+> **Nomenclature (Nov 2026):** the proposed algorithm is now **PA-VFH** (neural predictive occupancy inside the VFH+ pipeline; see [PA_VFH.md](PA_VFH.md)). The algorithm this document called "P-VFH" (code key `pvfh_prob`) is renamed **PA-VFH-K** throughout; its data and run names are unchanged.
+
 Everything runs from `~/ros2_ws`. Each step says what it does, how long it
 took on this machine (12 cores), what it writes, and what a correct result
 looks like. Steps 1–3 take ten minutes and prove the stack works; steps 4–8

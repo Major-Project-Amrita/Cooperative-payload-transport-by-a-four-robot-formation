@@ -1,5 +1,5 @@
 function [vec, info] = pvfh_prob(pos, world, movers, t_now, goal, margin, v, eps_cfg, prev_heading)
-%PVFH_PROB  Probabilistic VFH: P-VFH over uncertain ranges + APF obstacle term.
+%PVFH_PROB  Probabilistic VFH: PA-VFH-K over uncertain ranges + APF obstacle term.
 %
 %   [vec, info] = PVFH_PROB(pos, world, movers, t_now, goal, margin, v, eps_cfg, prev_heading)
 %
@@ -7,7 +7,7 @@ function [vec, info] = pvfh_prob(pos, world, movers, t_now, goal, margin, v, eps
 %   the SAME noisy scan, so the composition is the contribution, not the
 %   pieces):
 %
-%   STAGE 1 -- P-VFH sector probabilities (per bearing, then per sector)
+%   STAGE 1 -- PA-VFH-K sector probabilities (per bearing, then per sector)
 %   ------------------------------------------------------------------------
 %   The measured range of a beam is modelled as
 %       d_meas = d + e,      e ~ N(0, s_b^2)              (1)
@@ -56,7 +56,7 @@ function [vec, info] = pvfh_prob(pos, world, movers, t_now, goal, margin, v, eps
 %             * exp( -d_meas^2 / (2 (sig^2 + s_b^2)) ).        (6)
 %   Three properties make this the right bridge between the probability layer
 %   and the control law:
-%     (i)  EXACT DETERMINISTIC LIMIT: as s_b -> 0, u_b -> env(d_meas). P-VFH
+%     (i)  EXACT DETERMINISTIC LIMIT: as s_b -> 0, u_b -> env(d_meas). PA-VFH-K
 %          degenerates to the deterministic VFH histogram when the sensor is
 %          precise -- the low-noise behaviour is inherited, not re-tuned.
 %     (ii) BOUNDED AND GRADED: u_b < 1 always, and enlarged arcs carry
@@ -93,7 +93,7 @@ function [vec, info] = pvfh_prob(pos, world, movers, t_now, goal, margin, v, eps
 %   which pushes along the confidence-weighted negative range gradient. A
 %   bearing that reads near with high confidence pushes hard; a noisy or
 %   unknown bearing pushes little. The two stages are fused exactly like the
-%   deterministic stack: the chosen valley direction is the P-VFH steering
+%   deterministic stack: the chosen valley direction is the PA-VFH-K steering
 %   vector, the reflex is added with avoid_gain.
 %
 %   info fields (for logging/plots):
@@ -188,7 +188,7 @@ sh2 = sigma_hist^2;
 % NB: './' -- with '/' this was a MATRIX right-division of two row vectors,
 % i.e. ONE least-squares scalar for the whole scan, so every beam got the
 % same kernel value and the histogram was flat (found 2026-10-02; every
-% P-VFH result before that date was produced with a direction-blind
+% PA-VFH-K result before that date was produced with a direction-blind
 % histogram, steering by goal attraction + reflex only).
 u_beam = sqrt(sh2 ./ (sh2 + s2)) .* exp( -d_meas.^2 ./ (2*(sh2 + s2)) );
 u_beam(~valid) = v.p_unknown;                   % no return -> floor

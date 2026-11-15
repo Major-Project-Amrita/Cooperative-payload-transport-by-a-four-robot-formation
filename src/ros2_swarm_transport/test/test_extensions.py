@@ -116,3 +116,38 @@ def test_learned_monitor_runs():
     _, S = run_mission(*DYN, algo="mpc", seed=1, verbose=False, timesteps=150,
                        gate_source="learned")
     assert S["gate_stats"]["checks"] > 0
+
+
+def test_pavfh_nonn_uses_no_contract_prediction():
+    """PA-VFH must not see movers' future: its steering is identical whether
+    the movers' contract future differs or not, given the same present."""
+    from ros2_swarm_transport.vfh import VfhConfig, pavfh
+    world, m = load_scenario(*DYN)
+    _, m2 = load_scenario(*DYN, t0_offset=np.zeros(len(m)))
+    pos, goal = np.array([-2.0, 0.0]), np.array([12.0, 0.0])
+    out = []
+    for movers in (m, m2):
+        cfg = VfhConfig()
+        out.append(pavfh(pos, world, movers, 10.0, goal, 1.0, cfg, 1e-6, 0.0,
+                         np.random.default_rng(0), True, False))
+    assert np.allclose(out[0], out[1])
+
+
+def test_pavfh_nonn_mission_runs():
+    _, S = run_mission(*DYN, algo="pavfh_nonn", seed=1, verbose=False, timesteps=150)
+    assert S["transport_time"] > 0
+
+
+@pytest.mark.skipif(not os.path.exists(os.path.join(PKG, "models", "pavfh_occupancy.npz")),
+                    reason="PA-VFH occupancy network not trained")
+def test_pavfh_neural_mission_runs():
+    from ros2_swarm_transport import neural
+    from ros2_swarm_transport.vfh import VfhConfig, pavfh
+    world, m = load_scenario(*DYN)
+    _, info = pavfh(np.array([-2.0, 0.0]), world, m, 5.0, np.array([12.0, 0.0]), 1.0,
+                    VfhConfig(), 1e-6, 0.0, np.random.default_rng(0), True, True,
+                    return_info=True)
+    u = info["u_sector"]
+    assert u.shape == (72,) and np.all((u >= 0) & (u <= 1))
+    _, S = run_mission(*DYN, algo="pavfh", seed=1, verbose=False, timesteps=150)
+    assert S["transport_time"] > 0

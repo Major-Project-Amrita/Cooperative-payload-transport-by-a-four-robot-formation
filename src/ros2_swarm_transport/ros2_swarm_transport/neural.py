@@ -87,7 +87,7 @@ def _conv1d_circ(x, W, b):
     """x (C,L), W (O,C,k), b (O,) -> (O,L), circular padding, stride 1."""
     O, C, k = W.shape
     p = k // 2
-    xp = np.concatenate([x[:, -p:], x, x[:, :p]], axis=1)
+    xp = np.concatenate([x[:, -p:], x, x[:, :p]], axis=1) if p else x
     L = x.shape[1]
     cols = np.stack([xp[:, i:i + L] for i in range(k)], axis=1)   # (C,k,L)
     return W.reshape(O, C * k) @ cols.reshape(C * k, L) + b[:, None]
@@ -205,3 +205,32 @@ def monitor_forward(m, x):
     z = _relu(_lin(z, m["h1.weight"], m["h1.bias"]))
     z = _relu(_lin(z, m["h2.weight"], m["h2.bias"]))
     return float(_lin(z, m["h3.weight"], m["h3.bias"])[0])
+
+
+# ---------------------------------------------------------------------------
+# PA-VFH: learned predictive occupancy (replaces the analytic expected kernel)
+# ---------------------------------------------------------------------------
+
+OCC_FRAMES = 3          # filtered scans in the input window (t, t-1, t-2)
+
+
+def occupancy_features(frames, sig, observed, ego, margin):
+    """frames: list (newest first) of per-sector filtered min ranges (S,);
+    sig: per-sector posterior sigma (S,); observed: (S,) bool;
+    ego: (S,) own closing speed toward each sector (m/s, + = approaching).
+    -> (OCC_FRAMES + 3, S) input of the occupancy network."""
+    rows = [np.clip((f - margin) / 3.0, -0.5, 1.5) for f in frames]
+    while len(rows) < OCC_FRAMES:
+        rows.append(rows[-1])
+    rows += [np.clip(sig / 0.2, 0.0, 3.0), observed.astype(float), ego / 0.6]
+    return np.stack(rows[:OCC_FRAMES] + rows[-3:])
+
+
+def occupancy_forward(m, x):
+    """Fully convolutional, circular (rotation-equivariant over sectors):
+    -> per-sector danger u in (0, 1)."""
+    h = _relu(_conv1d_circ(x, m["c1.weight"], m["c1.bias"]))
+    h = _relu(_conv1d_circ(h, m["c2.weight"], m["c2.bias"]))
+    h = _relu(_conv1d_circ(h, m["c3.weight"], m["c3.bias"]))
+    z = _conv1d_circ(h, m["out.weight"], m["out.bias"])[0]
+    return 1.0 / (1.0 + np.exp(-z))

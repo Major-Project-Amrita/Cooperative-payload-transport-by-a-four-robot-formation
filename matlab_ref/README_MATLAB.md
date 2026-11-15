@@ -1,5 +1,7 @@
 # Running your MATLAB swarm in the ROS 2 / Gazebo world
 
+> **Nomenclature (Nov 2026):** "P-VFH" in this folder is the algorithm now called **PA-VFH-K**; the proposed algorithm is PA-VFH (see ../docs/PA_VFH.md).
+
 > **October 2026 audit.** Several statements below predate the audit. Current
 > behaviour: six algorithms (`apf`, `vfh`, `fgm`, `dwa`, `pvfh`, `pvfh_prob`)
 > through one noisy sensing front end; the transport pose (position **and**
@@ -116,7 +118,7 @@ fights the goal term.
 | `sensor_noise.m` | The range-noise model every algorithm variant consumes (lidar/tof). |
 | `pvfh_scan.m` | p-VFH on scans, with enlarged obstacles. |
 | `pvfh_predict.m` | Predictive variant: movers raycast at contracted future poses. |
-| `pvfh_prob.m` | **P-VFH (the proposal)**: probabilistic occupancy + APF reflex. |
+| `pvfh_prob.m` | **PA-VFH-K (the proposal)**: probabilistic occupancy + APF reflex. |
 | `apf_obstacle_repulsion.m` | APF obstacle reflex on a scan (shared by all variants). |
 | `steering_dispatch.m` | Algorithm dispatch ('apf'/'vfh'/'pvfh'/'pvfh_prob') for both phases. |
 | `formation_clearance.m` | Whole-body collision, three fidelity modes. |
@@ -255,7 +257,7 @@ difference is attributable to the steering law alone, not the sensing:
 | `'apf'` | APF reflex only (Phase 1 cascaded with attraction; Phase 2 reflex only — the caller blends `vec_goal`) | none | classical APF baseline |
 | `'vfh'` | deterministic VFH histogram on the noisy scan | none (classic stack) | VFH+ baseline |
 | `'pvfh'` | deterministic predictive VFH (the previously verified stack) | `pred_lead` | APF+VFH hybrid, reference behaviour |
-| `'pvfh_prob'` | **P-VFH: probabilistic occupancy + APF reflex (the proposal)** | `pred_lead` | this work |
+| `'pvfh_prob'` | **PA-VFH-K: probabilistic occupancy + APF reflex (the proposal)** | `pred_lead` | this work |
 
 All four are dispatched by `steering_dispatch.m` (a standalone file rather
 than script-locals, so **Octave runs the same code path** — Octave defines
@@ -276,14 +278,14 @@ obstacle faces can otherwise cancel and leave an APF repulsive term with zero
 usable gradient (the classical "local minimum" trap — E1 shows exactly this:
 APF never reaches the goal on the dynamic world).
 
-### The P-VFH concept (`pvfh_prob.m`) — why a probabilistic histogram
+### The PA-VFH-K concept (`pvfh_prob.m`) — why a probabilistic histogram
 
 The deterministic histogram thresholds a danger kernel `env(d) =
 exp(−d²/2σ²)` of the measured range. With a noisy sensor that is brittle in
 two opposite ways: a return measurably inside the reaction envelope can still
 leave the histogram reading "free" (missed obstacle, collisions), while any
 single low outlier seals a corridor the deterministic stack would use.
-P-VFH keeps the per-bearing uncertainty and computes TWO layers per beam:
+PA-VFH-K keeps the per-bearing uncertainty and computes TWO layers per beam:
 
 1. **Risk layer** — blocked probability under the sensor likelihood
    `d ~ N(d_meas, s_b²)`, one-sided (nothing behind a return):
@@ -301,7 +303,7 @@ P-VFH keeps the per-bearing uncertainty and computes TWO layers per beam:
    with sensor noise — the graceful degradation E2 measures.
 
 Properties that make u_b the right bridge: **(i) exact deterministic limit**
-(s_b → 0 gives env(d_meas), so P-VFH inherits the verified low-noise
+(s_b → 0 gives env(d_meas), so PA-VFH-K inherits the verified low-noise
 behaviour instead of re-tuning it); **(ii) bounded and graded**, so valleys
 survive smoothing; **(iii) monotone caution** (∂u/∂s_b > 0: an uncertain
 return may hide a closer obstacle). The control topology — VFH+ propagation,
@@ -334,6 +336,6 @@ run_paper_experiments('smoke'); % 7 runs, minutes — pipeline check
 
 Smoke-mode results on the dynamic world (Octave 10.3, seed 7): all variants
 reach with 0 collisions at σ0 = 0.02; at σ0 = 0.40 the deterministic VFH
-**fails** (0% goal rate, 250 collision steps) while P-VFH still reaches
+**fails** (0% goal rate, 250 collision steps) while PA-VFH-K still reaches
 (min clearance 0.25 m) — the graceful-degradation claim in one table. Dense
-vs 8-beam ToF (E3): P-VFH reaches in both, clearance 0.35 → 0.30 m.
+vs 8-beam ToF (E3): PA-VFH-K reaches in both, clearance 0.35 → 0.30 m.

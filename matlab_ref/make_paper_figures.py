@@ -54,7 +54,7 @@ ALGOS = ["apf", "vfh", "fgm", "dwa", "mpc", "pvfh", "pvfh_filt", "pvfh_prob"]
 COL = {"apf": "#d62728", "vfh": "#ff7f0e", "fgm": "#8c564b",
        "dwa": "#9467bd", "mpc": "#e377c2", "pvfh_filt": "#17becf", "pvfh": "#1f77b4", "pvfh_prob": "#2ca02c"}
 LAB = {"apf": "APF", "vfh": "VFH", "fgm": "FGM", "dwa": "DWA", "mpc": "MPC", "pvfh_filt": "pVFH+F",
-       "pvfh": "pVFH", "pvfh_prob": "P-VFH"}
+       "pvfh": "pVFH", "pvfh_prob": "PA-VFH-K"}
 FORMS = ["square", "diamond", "triangle", "line"]
 RNG = np.random.default_rng(12345)          # bootstrap only; deterministic
 
@@ -749,7 +749,7 @@ def fig_e7(T, R, W, out):
                 if L is not None:
                     ax.plot(L["leader_x"], L["leader_y"], color=COL[a], lw=0.8,
                             alpha=0.6, zorder=4)
-        ax.set_title(f"{w}: pVFH (blue) and P-VFH (green) paths, "
+        ax.set_title(f"{w}: pVFH (blue) and PA-VFH-K (green) paths, "
                      f"$\\sigma_0$={sig[0]:g}", fontsize=9)
         bx = axes[i][1]
         wd = 0.8 / len(sig)
@@ -1024,7 +1024,7 @@ def build_tables(T):
                  rows_for("E3", [([LAB[a], f"{'lidar' if b >= 288 else 'tof'}-{b}"],
                                   dict(algo=a, beams=b))
                                  for a in ALGOS for b in (288, 64, 16, 8)], block=0))
-    out["e4"] = ("E4 -- formation shapes under P-VFH (the P-VFH rows of E5)", ["Shape"],
+    out["e4"] = ("E4 -- formation shapes under PA-VFH-K (the PA-VFH-K rows of E5)", ["Shape"],
                  rows_for("E5", [([f], dict(algo="pvfh_prob", formation=f)) for f in FORMS]))
     out["e5"] = ("E5 -- formation x steering law (s = 0.60 m)", ["Law", "Shape"],
                  rows_for("E5", [([LAB[a], f], dict(algo=a, formation=f))
@@ -1079,7 +1079,7 @@ def build_tables(T):
 
 
 def stats_rows(T):
-    """Paired tests on E2 (and E7): P-VFH minus each deterministic law."""
+    """Paired tests on E2 (and E7): PA-VFH-K minus each deterministic law."""
     rows = []
     for exp in ("E2", "E7", "E13"):
         E = T[T["exp"] == exp]
@@ -1138,10 +1138,10 @@ def write_stats(path, rows, legacy):
                      f"{r[0]:+.1f} [{r[1]:+.1f},{r[2]:+.1f}] & {pv(r[3])} & "
                      f"{b}/{c} & {pv(pm)} \\\\\n")
         fh.write("\\bottomrule\n\\end{tabular}\n")
-        fh.write(r"\caption{Paired-seed tests, P-VFH minus the named deterministic law "
-                 r"(positive $\Delta$gap and negative $\Delta$rej.\ favour P-VFH). "
+        fh.write(r"\caption{Paired-seed tests, PA-VFH-K minus the named deterministic law "
+                 r"(positive $\Delta$gap and negative $\Delta$rej.\ favour PA-VFH-K). "
                  r"$p_W$: two-sided Wilcoxon signed-rank on the per-seed differences; "
-                 r"win/loss: seeds where only P-VFH / only the baseline reached the goal, "
+                 r"win/loss: seeds where only PA-VFH-K / only the baseline reached the goal, "
                  r"$p_M$: exact McNemar (binomial) test on those discordant pairs. "
                  r"Intervals are percentile bootstrap. No multiplicity correction is "
                  r"applied; read the $p$-values with the number of rows in mind.}"
@@ -1193,7 +1193,7 @@ def write_log(path, T, tabs, srows, csv, legacy):
                   "e11", "e12", "e13", "e14"):
             title, heads, rows = tabs[k]
             md_table(fh, title, heads, rows, legacy)
-        fh.write("\n### Paired-seed tests (P-VFH minus baseline)\n\n")
+        fh.write("\n### Paired-seed tests (PA-VFH-K minus baseline)\n\n")
         if srows:
             fh.write("| exp | world | vs | sigma0 | d gap m [CI] | p (Wilcoxon) | "
                      "d rej [CI] | p (Wilcoxon) | win/loss | p (McNemar) |\n" + "|---" * 10 + "|\n")
@@ -1249,7 +1249,7 @@ def main():
     fig_overlays(T, R, W, F("trajectory_overlays.pdf"))
     fig_sketch(F("formation_sketch.pdf"))
     fig_trails(T, R, W, "E5", "pvfh_prob", FORMS,
-               "E4: P-VFH centroid paths per formation shape, all seeds",
+               "E4: PA-VFH-K centroid paths per formation shape, all seeds",
                F("formation_trails.pdf"))
     fig_heatmap(T, F("e5_heatmap.pdf"))
     fig_line_anatomy(T, R, W, F("e5_line_anatomy.pdf"))

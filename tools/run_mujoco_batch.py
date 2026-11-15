@@ -1,16 +1,16 @@
 """The MuJoCo physics-validation batch (resumable: finished runs are skipped).
 
   V1  laws x payload modes, square, AWS warehouse, motion limits on
-  V2  formation shapes x payload modes (MPC and P-VFH)
+  V2  formation shapes x payload modes (MPC and PA-VFH-K)
   V3  motion limits off (the kinematic model's default) vs on
-  V4  seeds 1-5 (MPC and P-VFH, carried plate)
+  V4  seeds 1-5 (MPC and PA-VFH-K, carried plate)
   V5  the MATLAB study's own warehouse (swarm_world_dynamic) under physics
   V6  formation feedback off (open-loop frame)
   P1  replication: 5 planners x 3 payload modes x seeds 1-10, randomised
       traffic phase, AWS warehouse, motion limits on       -> results/mujoco_phase/
   P2  robot-parameter sweep, one factor at a time from nominal (chassis mass,
       wheel speed limit, wheel friction, payload mass, wheel force limit),
-      MPC and P-VFH, carried plate, seeds 1-5, randomised phase
+      MPC and PA-VFH-K, carried plate, seeds 1-5, randomised phase
       (the planner keeps its nominal model: this measures model mismatch)
 
     python3 tools/run_mujoco_batch.py            # everything (~1 h, 1 core)
@@ -72,7 +72,7 @@ for a in ("mpc", "pvfh_prob"):
 for a in ("mpc", "pvfh_prob"):          # V6: open-loop frame (no formation feedback)
     add("V6", a, "square", 1.18, "on_top", hold=0.0)
 
-for a in ("mpc", "mppi", "dwa", "pvfh_prob", "nn"):     # P1: replication
+for a in ("mpc", "mppi", "dwa", "pvfh_prob", "nn", "pavfh"):     # P1: replication
     for p in ("virtual", "on_top", "behind"):
         for s in range(1, 11):
             add("P1", a, "square", 1.18, p, seed=s, phase=True)
@@ -80,7 +80,7 @@ SWEEP = [("mass3", dict(chassis_mass=3.0)), ("mass12", dict(chassis_mass=12.0)),
          ("vmax08", dict(v_wheel_max=0.8)), ("vmax16", dict(v_wheel_max=1.6)),
          ("fric06", dict(wheel_friction=0.6)), ("load05", dict(payload_scale=0.5)),
          ("load20", dict(payload_scale=2.0)), ("force1", dict(force_max=1.0))]
-for a in ("mpc", "pvfh_prob"):                           # P2: robot sweep
+for a in ("mpc", "pvfh_prob", "pavfh"):                  # P2: robot sweep
     for rt, rb in SWEEP:
         for s in range(1, 6):
             add("P2", a, "square", 1.18, "on_top", seed=s, phase=True, robot=rb, rtag=rt)

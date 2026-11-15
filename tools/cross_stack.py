@@ -27,7 +27,7 @@ CELL = ["exp", "algo", "sense_kind", "sigma0", "beams", "world", "formation",
         "mover_scale", "adl", "contract", "loc_sigma", "comm_drop", "n_movers",
         "kin"]
 NAME = {"apf": "APF", "vfh": "VFH", "fgm": "FGM", "dwa": "DWA", "mpc": "MPC",
-        "pvfh": "pVFH", "pvfh_filt": "pVFH+F", "pvfh_prob": "P-VFH"}
+        "pvfh": "pVFH", "pvfh_filt": "pVFH+F", "pvfh_prob": "PA-VFH-K"}
 
 
 def wilson(k, n, z=1.959964):

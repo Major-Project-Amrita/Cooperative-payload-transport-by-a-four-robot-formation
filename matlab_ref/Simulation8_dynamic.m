@@ -46,7 +46,7 @@ cfg.formation        = 'square'; % 'square'|'line'|'triangle'|'diamond' (slot la
 %   'dwa'       Dynamic-Window arc-sampling baseline (instantaneous scan)
 %   'mpc'       receding-horizon lattice-MPC baseline (instantaneous scan)
 %   'pvfh'      deterministic VFH+ with the mover prediction horizon
-%   'pvfh_prob' P-VFH: probabilistic occupancy + APF reflex (the proposal)
+%   'pvfh_prob' PA-VFH-K: probabilistic occupancy + APF reflex (the proposal)
 % Every variant consumes the SAME noisy scan from the SAME sensor model, so
 % the comparison isolates the steering law, not the sensing.
 cfg.algo             = 'pvfh';
@@ -159,7 +159,7 @@ cfg.kin = struct('enable', false, 'v_robot_max', 1.0, 'yaw_acc_max', 2.5, ...
 %     toward the goal, 1,270 escape steps without getting round it).
 % window = 150 steps (15 s). It was 600 (60 s): on the plaza the histogram
 % laws then hovered in front of an obstacle cluster for a minute before the
-% detector fired (pilot, 10 seeds: P-VFH 109 s -> 79 s; random layouts
+% detector fired (pilot, 10 seeds: PA-VFH-K 109 s -> 79 s; random layouts
 % 77 s -> 60 s; nothing got worse). 100 and 60 were tried: faster on the
 % plaza but with mover contacts on the line formation / more rejections.
 cfg.adl = struct('enable', true, 'window', 150, 'min_progress', 0.30, ...
@@ -208,7 +208,7 @@ cfg.vfh.sense = struct('kind', 'lidar', 'sigma0', 0.02, 'k_rng', 0.03, ...
                        'fov_deg', 60, 'max_range', inf, 'frame', 'body');
 % frame 'body': the ToF fan is centred on the body heading (a mounted
 % sensor). 'world' reproduces the legacy fan fixed on world +x.
-cfg.vfh.p_unknown = 0.05;   % P-VFH: occupancy floor for unobserved sectors
+cfg.vfh.p_unknown = 0.05;   % PA-VFH-K: occupancy floor for unobserved sectors
 
 % --- p-VFH parameters (unchanged from Simulation7_sdf) ---
 cfg.vfh.num_sectors      = 72;

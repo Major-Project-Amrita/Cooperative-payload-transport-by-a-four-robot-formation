@@ -14,6 +14,10 @@
                           the shadow) vs geometric sensor monitor vs learned
                           conformal monitor; 2 noise levels x 4 laws x 4 worlds x 6
                           seeds; plus a k_sigma / v_obs sweep of the sensor monitor
+  E19 PA-VFH ablation    PA-VFH (neural occupancy) vs PA-VFH (no NN, analytic
+                          kernel, same instantaneous scan) vs PA-VFH-K (former
+                          P-VFH, contract-predicted scan) vs MPC / MPPI; 3 noise
+                          levels x 5 worlds x 6 seeds
   E18 baseline tuning     default vs tuned parameters (tools/tune_baselines.py)
                           on held-out worlds/seeds, 6 laws x 10 worlds x 5 seeds
 
@@ -70,7 +74,8 @@ def build(exp):
     J = []
     if exp == "E15":
         for w in LAYOUTS:
-            for a in ("vfh", "fgm", "dwa", "mpc", "mppi", "pvfh", "pvfh_prob", "nn"):
+            for a in ("vfh", "fgm", "dwa", "mpc", "mppi", "pvfh", "pvfh_prob", "nn",
+                      "pavfh_nonn", "pavfh"):
                 for s in range(1, 11):
                     J.append(job(exp, w, a, s))
     elif exp == "E16":
@@ -78,14 +83,14 @@ def build(exp):
                  ("grid2x3", 1.18, 6), ("grid3x3", 1.0, 9)]
         for w in ("dynamic", "wh_m_racks", "wh_l_racks"):
             for f, sp, k in teams:
-                for a in ("dwa", "mpc", "mppi", "pvfh_prob", "nn"):
+                for a in ("dwa", "mpc", "mppi", "pvfh_prob", "nn", "pavfh"):
                     for s in range(1, 11):
                         J.append(job(exp, w, a, s, formation=f, spacing=sp, n_robots=k))
     elif exp == "E17":
         for w in ("dynamic", "awswh", "wh_m_racks", "rand08"):
             for gs in ("audit", "sensor", "learned"):
                 for sg in (0.02, 0.10):
-                    for a in ("dwa", "mpc", "mppi", "pvfh_prob"):
+                    for a in ("dwa", "mpc", "mppi", "pvfh_prob", "pavfh"):
                         for s in range(1, 7):
                             J.append(job(exp, w, a, s, sigma0=sg, gate_source=gs))
         for w in ("dynamic", "awswh"):                     # monitor margin sweep
@@ -96,10 +101,16 @@ def build(exp):
                                      gate_source="sensor", k_sigma=k, v_obs=v))
     elif exp == "E18":
         for w in HELD_OUT:
-            for a in ("vfh", "pvfh_prob", "fgm", "dwa", "mpc", "mppi"):
+            for a in ("vfh", "pvfh_prob", "fgm", "dwa", "mpc", "mppi", "pavfh"):
                 for t in (0, 1):
                     for s in range(1, 6):
                         J.append(job(exp, w, a, s, sigma0=0.05, tuned=t))
+    elif exp == "E19":
+        for w in ("dynamic", "awswh", "wh_m_racks", "rand08", "maze"):
+            for a in ("pavfh", "pavfh_nonn", "pvfh_prob", "mpc", "mppi"):
+                for sg in (0.02, 0.10, 0.20):
+                    for s in range(1, 7):
+                        J.append(job(exp, w, a, s, sigma0=sg))
     else:
         raise ValueError(exp)
     return J

@@ -26,7 +26,7 @@ function a = apf_obstacle_repulsion(ranges, angles, danger_dist, falloff_power, 
 %       point-cloud sample of obstacle interiors.
 %
 %   ROLE IN THE HYBRID
-%   The polar-histogram stage (VFH/P-VFH) chooses WHERE to steer; this term
+%   The polar-histogram stage (VFH/PA-VFH-K) chooses WHERE to steer; this term
 %   supplies the graded "away from what is about to hit me" component that a
 %   72-bin histogram with a 5 deg sector width cannot express. In the
 %   deterministic stack it is inlined at the bottom of pvfh_scan.m /

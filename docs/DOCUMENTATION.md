@@ -1,5 +1,7 @@
 # Cooperative payload transport by a four-robot formation: methods, replication and physics validation
 
+> **Nomenclature (Nov 2026):** the proposed algorithm is now **PA-VFH** (neural predictive occupancy inside the VFH+ pipeline; see [PA_VFH.md](PA_VFH.md)). The algorithm this document called "P-VFH" (code key `pvfh_prob`) is renamed **PA-VFH-K** throughout; its data and run names are unchanged.
+
 Documentation of the `~/ros2_ws` project. It explains every concept the code
 uses, what each figure shows and how to read it, what was measured, and what
 the measurements do and do not establish. Commands are in
@@ -168,12 +170,12 @@ results is a difference in the steering law, not in what it was shown.
 | **MPC** | search turn-rate *sequences* over a horizon | yes | external baseline |
 | **pVFH** | VFH + horizon | yes | ablation step 1 |
 | **pVFH+F** | pVFH + recursive range filter | yes | ablation step 2 |
-| **P-VFH** | pVFH+F + expected kernel | yes | the proposal |
+| **PA-VFH-K** | pVFH+F + expected kernel | yes | the proposal |
 
-VFH → pVFH → pVFH+F → P-VFH is an *ablation ladder*: each step adds exactly
+VFH → pVFH → pVFH+F → PA-VFH-K is an *ablation ladder*: each step adds exactly
 one ingredient, so the effect of each can be measured separately.
 
-### 4.1 The polar histogram (VFH, pVFH, pVFH+F, P-VFH)
+### 4.1 The polar histogram (VFH, pVFH, pVFH+F, PA-VFH-K)
 
 The circle of bearings is cut into 72 sectors of 5°. Each sector gets a
 *danger value* from its nearest return at range `d`:
@@ -211,7 +213,7 @@ bearing, the purple line the chosen sector. Read it as: "the goal direction
 is free, so the law steers almost straight at it; had it been grey, the law
 would pick the nearest green bar".*
 
-### 4.2 The expected kernel (P-VFH)
+### 4.2 The expected kernel (PA-VFH-K)
 
 A measured range is uncertain. If the true range is distributed as
 `N(d_meas, s_b²)`, the *expected* danger value has a closed form:
@@ -224,7 +226,7 @@ Two properties are proved in the reference report and tested here
 (`test_audit_port.py`):
 
 - **Deterministic limit.** As `s_b → 0`, `u_b → env(d_meas)`: with a precise
-  sensor P-VFH *is* pVFH.
+  sensor PA-VFH-K *is* pVFH.
 - **Proposition 2.** The range at which a return crosses the threshold (the
   *reaction distance*) grows with `s_b` for all `s_b < 1.757 σ_h`: a noisier
   sensor makes the law react earlier.
@@ -237,9 +239,9 @@ a larger range. Right, that crossing range against the noise level; it rises
 up to `s* = 1.757 σ_h` and falls after. The green band is the noise range of
 the study (≤ 0.4 m): there the reaction distance moves from 2.01 m to about
 2.07 m. **That 3 % is the whole effect of the kernel**, and it is why the
-experiments find no measurable difference between pVFH+F and P-VFH (§7.3).*
+experiments find no measurable difference between pVFH+F and PA-VFH-K (§7.3).*
 
-### 4.3 The recursive range filter (pVFH+F, P-VFH)
+### 4.3 The recursive range filter (pVFH+F, PA-VFH-K)
 
 Each beam keeps a one-dimensional Kalman filter over time. Per step the
 uncertainty grows by a process noise `q = 0.08 m` (how much a range can
@@ -384,7 +386,7 @@ Each cell has 10 seeds (20 in E2, 3 per layout in E13).
 |---|---|---|
 | E1 | Which law is best under clean conditions? | 8 laws |
 | E2 | What does sensor noise do, and which ingredient helps? | 4 ladder laws × σ0 ∈ {0.02 … 0.40} m |
-| E3 | Fewer beams? | pVFH, P-VFH × {288 lidar, 64/16/8 ToF} |
+| E3 | Fewer beams? | pVFH, PA-VFH-K × {288 lidar, 64/16/8 ToF} |
 | E5 (E4) | Other formation shapes? | 4 shapes × 8 laws at s = 0.6 m |
 | E6 | Matched sensors | lidar-288 / ToF-16 / ToF-8 × 2 noise levels × 4 laws |
 | E7 | Other environments | plaza, maze × 8 laws × 2 noise levels |
@@ -493,12 +495,12 @@ mission time, the bottom row gate rejections, against sensor noise. Read the
 columns left to right: VFH → pVFH adds the mover horizon (no change in noise
 robustness); pVFH → pVFH+F adds the range filter (the curves flatten: at
 σ0 = 0.1 m time drops from 77 s to 53 s and rejections from about 40 to
-about 3); pVFH+F → P-VFH adds the expected kernel (the two right-hand columns
+about 3); pVFH+F → PA-VFH-K adds the expected kernel (the two right-hand columns
 are indistinguishable).*
 
 - **The range filter is the effective ingredient.** It removes most of the
   histogram's noise sensitivity, in both stacks.
-- **The expected kernel adds nothing measurable.** P-VFH and pVFH+F are
+- **The expected kernel adds nothing measurable.** PA-VFH-K and pVFH+F are
   within each other's intervals in every cell of every experiment. §4.2
   explains why: at realistic noise it shifts the reaction distance by 3 %.
 - **MPC is at least as good as the proposal** in clean conditions (46 s vs
@@ -520,7 +522,7 @@ the contribution here is that an independent implementation reproduces them.
 
 **At zero noise** (Table T1b): with the corrected gate, VFH, FGM, DWA and
 MPC are unchanged to the last digit, because the reference gate never
-wrongly refused them. pVFH, pVFH+F and P-VFH diverge from MATLAB at
+wrongly refused them. pVFH, pVFH+F and PA-VFH-K diverge from MATLAB at
 t = 18.6 s, the first step where the reference refuses a pose that is
 0.15 m clear of everything; from then on MATLAB's run has 14 rejections and
 takes 50.9 s, the corrected run has **0 rejections** and takes 48.8 s. All 14
@@ -539,7 +541,7 @@ in all 221 cells.
 | VFH | 2.4 | 3.1 | 0.5 |
 | pVFH | 3.0 | 4.7 | 0.0 |
 | pVFH+F | 3.0 | 7.1 | 0.0 |
-| P-VFH | 3.8 | 6.9 | 0.0 |
+| PA-VFH-K | 3.8 | 6.9 | 0.0 |
 
 ![Gate effect](figures/gate_effect.png)
 
@@ -616,7 +618,7 @@ Seed 1, exact gate (all eight laws reach B, zero static contact):
 | DWA | 50.9 s | 0 | 55.2 s | 0 | 0 |
 | FGM | 74.2 s | 13 | 126.0 s | 129 | 80 steps |
 | pVFH | 83.0 s | 9 | 86.3 s | 10 | 0 |
-| P-VFH | 93.3 s | 12 | 90.8 s | 38 | 0 |
+| PA-VFH-K | 93.3 s | 12 | 90.8 s | 38 | 0 |
 | pVFH+F | 93.3 s | 12 | 90.8 s | 38 | 0 |
 | VFH | 93.5 s | 13 | 94.6 s | 63 | 0 |
 | APF | 128.3 s | 29 | 130.4 s | 52 | 39 steps |
@@ -632,7 +634,7 @@ static contact is zero:
 | pVFH | 86.8 s | 11.6 | 88.0 s | 24.2 | 0 |
 | pVFH+F | 89.3 s | 12.8 | 90.8 s | 39.8 | 0 |
 | VFH | 90.3 s | 14.1 | 91.0 s | 35.4 | 0 |
-| P-VFH | 91.1 s | 15.9 | 88.2 s | 28.7 | 0 |
+| PA-VFH-K | 91.1 s | 15.9 | 88.2 s | 28.7 | 0 |
 | APF | 137.8 s | 49.9 | 148.7 s | 89.2 | 54.4 steps/run |
 
 In narrow aisles the trajectory-optimising baselines are almost twice as
@@ -653,7 +655,7 @@ delayed relative to the movers (seed 1, limits on;
 | MPC | 0 | 0 | 0 | 34 | 34 | 0 |
 | DWA | 0 | 0 | 0 | 33 | 34 | 0 |
 | pVFH | 0 | 0 | 32 | 35 | 34 | 0 |
-| P-VFH | 0 | 0 | 32 | 35 | 34 | 0 |
+| PA-VFH-K | 0 | 0 | 32 | 35 | 34 | 0 |
 
 "Zero mover contact" in the table above is therefore true for one traffic
 phase, not in general. A 4 s shift is enough for the histogram laws to be
@@ -684,7 +686,7 @@ developed against. With noise (Table T7, reference gate, limits off):
 | pVFH | 87.5 s | 86.8 s | 12.4 | 11.4 |
 | pVFH+F | 87.0 s | 88.5 s | 12.8 | 12.8 |
 | VFH | 87.2 s | 89.2 s | 10.0 | 11.2 |
-| P-VFH | 88.8 s | 91.3 s | 16.6 | 12.6 |
+| PA-VFH-K | 88.8 s | 91.3 s | 16.6 | 12.6 |
 | FGM | 68.3 s | 77.8 s | 11.4 | 19.6 |
 | APF | 137.4 s | 139.4 s | 40.0 | 65.8 |
 
@@ -767,8 +769,8 @@ not only the planner frame, to arrive):
 | DWA | none | yes | 59.3 s | 8.7 cm | 42 cm | 0 / 9 |
 | DWA | carried | yes | 59.3 s | 10.9 cm | 38 cm | 0 / 7 |
 | DWA | towed | yes | 59.7 s | 10.5 cm | 62 cm | 0 / 9 |
-| P-VFH, pVFH, VFH | none or towed | **no** (6 of 6) | 153–194 s | 2.8–7.3 m | > 10 m | > 1,000 / > 100 |
-| P-VFH, pVFH, VFH | carried | yes, damaged | 99–118 s | 39–119 cm | 1.7–4.1 m | 64–319 / 43–49, plate tilted 25–56° |
+| PA-VFH-K, pVFH, VFH | none or towed | **no** (6 of 6) | 153–194 s | 2.8–7.3 m | > 10 m | > 1,000 / > 100 |
+| PA-VFH-K, pVFH, VFH | carried | yes, damaged | 99–118 s | 39–119 cm | 1.7–4.1 m | 64–319 / 43–49, plate tilted 25–56° |
 
 What this establishes:
 
@@ -814,7 +816,7 @@ What this establishes:
 ![Motion limits](figures/mujoco_motion_limits.png)
 
 *Figure: worst slot error over time with the motion limits off (red) and on
-(green), carried plate. Left MPC, right P-VFH.*
+(green), carried plate. Left MPC, right PA-VFH-K.*
 
 ![Frames](figures/mujoco_frames.png)
 
@@ -862,7 +864,7 @@ The two are identical, as they must be: both use the same
 
 **Not established**
 
-- That P-VFH is better than existing local planners. In every environment
+- That PA-VFH-K is better than existing local planners. In every environment
   with narrow passages MPC and DWA are faster and at least as safe.
 - Anything about hardware. All three stacks are simulations.
 - **Robustness to traffic timing.** Movers run a fixed timetable, so the

@@ -28,7 +28,7 @@ function [vec, comp_ms] = steering_dispatch(mode, q, goal, w_att, world, ...
 %     'mpc'        receding-horizon lattice MPC         none (instantaneous)
 %     'pvfh'       deterministic VFH+ histogram         T_lead
 %     'pvfh_filt'  pvfh + recursive range filter        T_lead   (ablation)
-%     'pvfh_prob'  P-VFH: range filter + expected kernel T_lead  (proposal)
+%     'pvfh_prob'  PA-VFH-K: range filter + expected kernel T_lead  (proposal)
 %
 %   So vfh -> pvfh isolates the prediction horizon and pvfh -> pvfh_prob
 %   isolates the probabilistic occupancy: a clean two-step ablation ladder.
@@ -108,7 +108,7 @@ switch lower(cfg.algo)
         sc  = local_sense(q, world, movers, t_now, cfg, margin, true);
         vec = local_vfh_from_scan(sc, q, goal, margin, cfg, prev_heading, mem_tag, t_now);
     case 'pvfh_filt'
-        % Ablation law: 'pvfh' + the SAME recursive range filter P-VFH uses,
+        % Ablation law: 'pvfh' + the SAME recursive range filter PA-VFH-K uses,
         % but the deterministic kernel. pvfh -> pvfh_filt isolates the
         % filter; pvfh_filt -> pvfh_prob isolates the expected kernel.
         sc  = local_sense(q, world, movers, t_now, cfg, margin, true);
@@ -118,7 +118,7 @@ switch lower(cfg.algo)
         end
         vec = local_vfh_from_scan(sc, q, goal, margin, cfg, prev_heading, mem_tag, t_now);
     case 'pvfh_prob'
-        % P-VFH: probabilistic occupancy + APF reflex (the proposal). Senses
+        % PA-VFH-K: probabilistic occupancy + APF reflex (the proposal). Senses
         % internally through the same front end (horizon on).
         % The recursive range filter needs one persistent scan history, so
         % it runs for the transport leader with a fixed (lidar) fan only.

@@ -1,0 +1,30 @@
+{
+  "rounds": [
+    {
+      "round": 0,
+      "driver": "pavfh_nonn",
+      "rollouts": 42,
+      "rollout_reach": 1.0,
+      "samples": 22532,
+      "wall_s": 180.5,
+      "val_mae": 0.01833624392747879,
+      "val_block_agree": 0.9834973122256744,
+      "val_missed_block": 0.09324465310380803
+    }
+  ],
+  "train_worlds": [
+    "rand01",
+    "rand02",
+    "rand03",
+    "rand04",
+    "rand05",
+    "dynamic",
+    "plaza"
+  ],
+  "train_teams": [
+    "square@1.18",
+    "triangle@1.18",
+    "grid2x3@0.59"
+  ],
+  "label": "oracle danger exp(-d^2/2 sigma_h^2) of the true sector range minimum over the prediction horizon (0.5 s)"
+}

@@ -1,5 +1,7 @@
 # Is this at the level of a Q2 journal paper?
 
+> **Nomenclature (Nov 2026):** the proposed algorithm is now **PA-VFH** (neural predictive occupancy inside the VFH+ pipeline; see [PA_VFH.md](PA_VFH.md)). The algorithm this document called "P-VFH" (code key `pvfh_prob`) is renamed **PA-VFH-K** throughout; its data and run names are unchanged.
+
 A review of the project as it stands on 3 October 2026, written the way a
 referee would read it. "Q2" here means a second-quartile robotics or
 automation journal (the tier of *Robotics and Autonomous Systems*,
@@ -12,10 +14,10 @@ necessarily large contribution.
 **Not yet, as the paper is currently framed. Close, if it is reframed.**
 
 The engineering and the evaluation are above what most Q2 submissions in
-this area offer. The problem is the claim. The proposed method, P-VFH, does
+this area offer. The problem is the claim. The proposed method, PA-VFH-K, does
 not outperform existing planners in this project's own data, and its named
 novelty (the expected kernel) has no measurable effect. A paper titled
-around P-VFH would be rejected on that point alone, however good the rest
+around PA-VFH-K would be rejected on that point alone, however good the rest
 is. A paper built on what the data does support is publishable at Q2 with
 about two to four weeks of further work.
 
@@ -28,7 +30,7 @@ about two to four weeks of further work.
 | Breadth of evaluation | **Strong** | 2,730 runs, 13 experiments, 3 designed worlds + 10 random layouts, noise, sensors, shapes, traffic, localisation error, command loss |
 | Baselines | **Adequate, attackable** | FGM, DWA, lattice MPC are present, but are untuned re-implementations |
 | Honest reporting | **Strong** | Negative results stated; a defect in the reference's own gate found and quantified |
-| Novelty of the method | **Weak** | Expected kernel changes the reaction distance by 3 %; P-VFH ≡ pVFH + range filter in every cell |
+| Novelty of the method | **Weak** | Expected kernel changes the reaction distance by 3 %; PA-VFH-K ≡ pVFH + range filter in every cell |
 | Does the proposal win? | **No** | MPC: 46 s vs 50 s in the study's warehouse, 51 s vs 93 s in the AWS warehouse, fewer rejections, larger gaps |
 | Validation beyond kinematics | **Adequate** | MuJoCo with mass, wheels, a pinned 12 kg load; ROS 2 in the loop. One seed per configuration |
 | Hardware | **Absent** | No real robot, no real sensor data |
@@ -144,13 +146,13 @@ replication study. Item 7 is what would move it toward Q1.
 
 ## What should not be done
 
-- Do not tune parameters or pick seeds until P-VFH wins. The data is clear,
+- Do not tune parameters or pick seeds until PA-VFH-K wins. The data is clear,
   and the replication makes any such move easy to detect.
 - Do not report "220 of 221 cells agree" without its caveat: interval
   overlap is lenient where a law fails in some seeds.
 - Do not describe the MuJoCo result as validating the *method*. It validates
   the kinematic *model* for planners that keep their margins. Do not present
-  "MPC succeeds, P-VFH fails under physics" as a physics finding either: it
+  "MPC succeeds, PA-VFH-K fails under physics" as a physics finding either: it
   is a traffic-timing effect that the kinematic model reproduces.
 - Do not call the ROS 2 run a deployment. It is the same simulation with
   the controller and the physics in separate processes.
