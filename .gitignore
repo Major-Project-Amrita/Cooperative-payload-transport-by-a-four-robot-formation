@@ -50,3 +50,5 @@ matlab_ref/logs/paper/parts/
 matlab_ref/logs/paper/shardlogs/
 matlab_ref/logs/paper/runs/
 dist/
+matlab_ref/octave-workspace
+matlab_ref/logs/xcheck_fixedgate/
