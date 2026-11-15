@@ -1,0 +1,34 @@
+{
+  "train_runs": 67,
+  "cal_runs": 22,
+  "test_runs": 23,
+  "n_train": 89763,
+  "n_cal": 26572,
+  "n_test": 32832,
+  "mae_test": 0.03857111185789108,
+  "unsafe_frac_test": 0.08199317738791423,
+  "in_distribution": {
+    "q_010": {
+      "q": 0.17720232903957367,
+      "admit_rate": 0.8286732456140351,
+      "false_accept_rate": 0.0,
+      "false_accept_given_unsafe": 0.0,
+      "coverage": 0.997228313840156
+    },
+    "q_050": {
+      "q": 0.09721636772155762,
+      "admit_rate": 0.8815484892787524,
+      "false_accept_rate": 0.00027412280701754384,
+      "false_accept_given_unsafe": 0.0033432392273402673,
+      "coverage": 0.9757858187134503
+    },
+    "q_100": {
+      "q": 0.06718350946903229,
+      "admit_rate": 0.8897112573099415,
+      "false_accept_rate": 0.0003654970760233918,
+      "false_accept_given_unsafe": 0.004457652303120356,
+      "coverage": 0.9436525341130604
+    }
+  },
+  "wall_s": 667.8
+}
