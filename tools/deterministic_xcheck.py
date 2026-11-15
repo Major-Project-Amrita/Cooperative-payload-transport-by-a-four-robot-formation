@@ -5,7 +5,12 @@ implementations should follow the same trajectory. Reports, per law, the
 maximum position difference over the common steps and the first step where
 the difference exceeds 1 mm.
 
-    python3 tools/deterministic_xcheck.py            (after tools/run_matlab_xcheck.sh)
+    python3 tools/deterministic_xcheck.py [gate] [matlab_log_dir] [tag]
+
+    python3 tools/deterministic_xcheck.py matlab                       # reference gate
+    python3 tools/deterministic_xcheck.py exact matlab_ref/logs/xcheck_fixedgate fixedgate
+        (after: cd matlab_ref && octave-cli --eval "run_xcheck()"  -- the
+         MATLAB reference with the corrected gate vs the Python exact gate)
 """
 import os, sys
 import numpy as np, pandas as pd
@@ -14,9 +19,11 @@ sys.path.insert(0, os.path.join(ROOT, "src", "ros2_swarm_transport"))
 from ros2_swarm_transport.headless_runner import run_mission, write_csv
 W = os.path.join(ROOT, "src/ros2_swarm_transport/worlds")
 GATE = sys.argv[1] if len(sys.argv) > 1 else "matlab"
+MDIR = sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, "matlab_ref/logs")
+TAG = sys.argv[3] if len(sys.argv) > 3 else GATE
 out = []
 for algo in ["apf", "vfh", "fgm", "dwa", "mpc", "pvfh", "pvfh_filt", "pvfh_prob"]:
-    mfile = os.path.join(ROOT, "matlab_ref/logs", f"x_{algo}_s0.csv")
+    mfile = os.path.join(ROOT, MDIR, f"x_{algo}_s0.csv")
     if not os.path.exists(mfile):
         print("missing", mfile); continue
     rows, S = run_mission(f"{W}/swarm_world_dynamic.sdf", f"{W}/dynamic_obstacles.json",
@@ -36,6 +43,6 @@ for algo in ["apf", "vfh", "fgm", "dwa", "mpc", "pvfh", "pvfh_filt", "pvfh_prob"
                     reject_py=int((p.reject[p.phase == 2] > 0).sum()),
                     reject_matlab=int((m.reject[m.phase == 2] > 0).sum())))
 df = pd.DataFrame(out)
-df.to_csv(os.path.join(ROOT, f"results/deterministic_xcheck_{GATE}.csv"), index=False)
+df.to_csv(os.path.join(ROOT, f"results/deterministic_xcheck_{TAG}.csv"), index=False)
 pd.set_option("display.width", 200)
 print(df.to_string(index=False, float_format=lambda x: f"{x:.2e}" if x < 0.01 else f"{x:.3f}"))

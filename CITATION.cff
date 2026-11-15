@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+message: "If you use this benchmark, its scenarios or its results, please cite it as below."
+title: "Local steering laws for rigid multi-robot payload transport: a replicated benchmark from kinematics to physics"
+type: software
+# TODO(authors): replace the placeholder below with every author (family-names,
+# given-names, affiliation, orcid) before tagging the release.
+authors:
+  - name: "Major Project - Amrita team (author list to be completed)"
+version: "1.0.0"
+# doi: 10.5281/zenodo.XXXXXXX   <- filled in after Zenodo mints it (docs/RELEASE.md)
+repository-code: "https://github.com/Major-Project-Amrita/Cooperative-payload-transport-by-a-four-robot-formation"
+keywords:
+  - multi-robot systems
+  - cooperative transport
+  - local planning
+  - benchmark
+  - replication
+  - MuJoCo
+  - ROS 2
+abstract: >-
+  An open, replicated benchmark of ten local steering laws (APF, VFH, FGM, DWA,
+  lattice MPC, MPPI, three histogram variants and a learned DAgger policy) for a
+  team of differential-drive robots carrying one rigid payload through
+  warehouses with moving traffic. Two independent implementations (MATLAB and
+  Python/ROS 2) agree step for step at zero noise; the evaluation randomises
+  the traffic phase per run, tunes every planner under an equal budget, varies
+  team size and warehouse layout, separates ground-truth collision screening
+  from a deployable sensor-based safety monitor, and validates in MuJoCo
+  physics. Simulation only.

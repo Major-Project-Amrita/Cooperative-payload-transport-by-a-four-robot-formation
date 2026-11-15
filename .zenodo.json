@@ -1,0 +1,11 @@
+{
+  "title": "Local steering laws for rigid multi-robot payload transport: a replicated benchmark from kinematics to physics (code, scenarios, configurations and results)",
+  "upload_type": "software",
+  "description": "Code, scenario files (SDF worlds and JSON traffic contracts), configurations, trained model weights and derived results of the benchmark. Two archives: the core release and the per-step run logs. Every file is listed with its SHA-256 in MANIFEST.sha256. Simulation study; no hardware data.",
+  "creators": [
+    {"name": "TODO: author list (family name, given names)", "affiliation": "TODO: affiliation"}
+  ],
+  "keywords": ["multi-robot systems", "cooperative transport", "local planning", "benchmark", "replication", "MuJoCo", "ROS 2"],
+  "version": "1.0.0",
+  "notes": "TODO before publishing: complete creators, choose a licence (add a LICENSE file; Zenodo then takes it from the repository)."
+}

@@ -43,3 +43,10 @@ Thumbs.db
 
 # Ignore nested log dirs that sometimes get checked into src/
 src/log/
+
+# MATLAB grid working files (the merged results are copied to results/matlab_fixedgate/;
+# the per-step logs go into the release's -runs archive, see tools/make_release.py)
+matlab_ref/logs/paper/parts/
+matlab_ref/logs/paper/shardlogs/
+matlab_ref/logs/paper/runs/
+dist/
