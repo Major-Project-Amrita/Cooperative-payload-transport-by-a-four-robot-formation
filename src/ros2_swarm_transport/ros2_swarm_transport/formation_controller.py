@@ -18,7 +18,18 @@ Two ways to feed it:
 
   free-running (lockstep:=false; real robots, or any simulator with odometry)
       subscribes  /<robot>/odom   nav_msgs/Odometry
+                  /<robot>/scan   sensor_msgs/LaserScan   (only if use_scans:=true)
       steps on a wall-clock timer of period dt.
+
+      use_scans:=true makes the robots' own range sensors the ONLY source of
+      obstacle information for steering and for the safety monitor: their
+      scans are fused into one map-frame point cloud (sensing.PointCloudScan,
+      self-filtered for the team and the carried load) and every scan query
+      of the controller is answered from it. Use it with algo:=pavfh (or
+      pavfh_nonn) and gate_source:=sensor or learned; the node refuses
+      combinations that need the simulator's ground truth or the traffic
+      contract's future. The static map (world_sdf) is still used for
+      formation planning and route waypoints.
 
 In both modes it publishes /<robot>/cmd_vel (geometry_msgs/Twist) and
 /swarm/phase (std_msgs/Int32: 1 forming/docking, 2 transport, 3 done).
@@ -50,6 +61,10 @@ class FormationController(Node):
         self.declare_parameter('robots', ['robot1', 'robot2', 'robot3', 'robot4'])
         self.declare_parameter('output_dir', '')
         self.declare_parameter('run_name', '')
+        self.declare_parameter('use_scans', False)
+        self.declare_parameter('scan_topic', 'scan')            # /<robot>/<scan_topic>
+        self.declare_parameter('scan_mount', [0.0, 0.0, 0.0])   # sensor x, y, yaw in base frame
+        self.declare_parameter('scan_max_age', 0.5)             # s; older -> stop
         p = lambda n: self.get_parameter(n).value
         self.S = mission_setup(self)
         self.ctrl = self.S['make_controller']()
@@ -78,6 +93,9 @@ class FormationController(Node):
                             history=HistoryPolicy.KEEP_LAST, depth=10)
             for n in self.robots:
                 self.create_subscription(Odometry, f'/{n}/odom', self._odom_cb(n), be)
+            self.scans = None
+            if bool(p('use_scans')):
+                self._setup_scans(p, be)
             self.timer = self.create_timer(self.dt, self.step)
             self.get_logger().info('formation controller up (free-running on odometry)')
 
@@ -107,11 +125,57 @@ class FormationController(Node):
                                         1.0 - 2.0 * (q.y * q.y + q.z * q.z))
         return cb
 
+    def _setup_scans(self, p, qos):
+        from sensor_msgs.msg import LaserScan
+        from .sensing import PointCloudScan
+        algo, gsrc = self.S['algo'], self.S.get('gate_source', 'truth')
+        if algo not in ('pavfh', 'pavfh_nonn') or gsrc not in ('sensor', 'learned'):
+            raise ValueError(
+                f"use_scans needs a sensor-only configuration (algo pavfh|pavfh_nonn, "
+                f"gate_source sensor|learned); got algo={algo}, gate_source={gsrc}")
+        self.cloud = PointCloudScan(robot_radius=self.S['P']['robot_radius'],
+                                    max_age=float(p('scan_max_age')))
+        self.mount = tuple(float(x) for x in p('scan_mount'))
+        self.scans = {n: None for n in self.robots}
+        topic = str(p('scan_topic'))
+        for n in self.robots:
+            self.create_subscription(LaserScan, f'/{n}/{topic}', self._scan_cb(n), qos)
+        cfg = self.ctrl.leader.cfg
+        cfg.scan_provider = self.cloud
+        self.get_logger().info(f'real-sensor mode: obstacles only from /<robot>/{topic}')
+
+    def _scan_cb(self, name):
+        def cb(msg):
+            if self.pos[name] is None:
+                return
+            from .sensing import laserscan_to_points
+            pose = (self.pos[name][0], self.pos[name][1], self.yaw[name])
+            self.scans[name] = laserscan_to_points(
+                pose, msg.ranges, msg.angle_min, msg.angle_increment,
+                msg.range_min, msg.range_max, self.mount)
+        return cb
+
+    def _update_cloud(self, pos):
+        if any(v is None for v in self.scans.values()):
+            return False
+        poly = None
+        if self.ctrl.phase == 2:                     # carrying: filter the load too
+            c = pos.mean(axis=0)
+            poly = pos[np.argsort(np.arctan2(pos[:, 1] - c[1], pos[:, 0] - c[0]))]
+            if len(poly) < 3:
+                poly = None
+        self.cloud.update(list(self.scans.values()), pos, self.t, poly)
+        return True
+
     def step(self):
         if any(self.pos[n] is None for n in self.robots):
             return                                   # wait for all odometry
         pos = np.array([self.pos[n] for n in self.robots])
         yaw = np.array([self.yaw[n] for n in self.robots])
+        if self.scans is not None and not self._update_cloud(pos):
+            for n in self.robots:                    # no scans yet: hold still
+                self.cmd(n, 0.0, 0.0)
+            return
         was = self.ctrl.mode
         out = self.ctrl.step(self.t, pos, yaw, None)
         self.t += self.dt

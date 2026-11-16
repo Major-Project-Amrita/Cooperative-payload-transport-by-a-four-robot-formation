@@ -422,7 +422,8 @@ class MujocoPlant:
 def setup(world_sdf=None, contract=None, mjcf=None, algo="pvfh_prob",
           formation="square", spacing=1.18, payload="on_top", seed=1,
           sigma0=0.02, kin=True, video=None, timesteps=3000, gate="exact",
-          hold_err=0.6, gui=False, phase=False, robot=None):
+          hold_err=0.6, gui=False, phase=False, robot=None, gate_source="truth",
+          mon_alpha=0.05):
     """Build the scenario, the controller and the plant (shared by run() and
     the ROS 2 nodes). phase: randomised traffic phase keyed on the seed;
     robot: overrides of ROBOT (chassis_mass, v_wheel_max, wheel_friction,
@@ -444,7 +445,8 @@ def setup(world_sdf=None, contract=None, mjcf=None, algo="pvfh_prob",
     if waypoints is None:
         waypoints = np.array([world.goal], dtype=float)
     start = np.asarray(meta.get("start", [-12.0, 0.0]), dtype=float)
-    P = make_params(kin=kin, timesteps=timesteps, gate=gate)
+    P = make_params(kin=kin, timesteps=timesteps, gate=gate, gate_source=gate_source,
+                    mon_alpha=mon_alpha, mon_seed=seed)
     rng = np.random.default_rng(seed)
     cfg = VfhConfig(sense={"kind": "lidar", "sigma0": sigma0})
     F = plan_formation(formation, spacing, start, waypoints[0],
@@ -453,7 +455,7 @@ def setup(world_sdf=None, contract=None, mjcf=None, algo="pvfh_prob",
              F=F, world_sdf=world_sdf, mjcf=mjcf, formation=formation,
              spacing=spacing, payload=payload, algo=algo, seed=seed,
              sigma0=sigma0, kin=kin, hold_err=hold_err, video=video,
-             phase=bool(phase), robot=dict(ROBOT),
+             phase=bool(phase), robot=dict(ROBOT), gate_source=gate_source,
              t0_offset=("" if t0_offset is None else
                         ";".join(f"{x:.3f}" for x in t0_offset)))
     S["make_controller"] = lambda: MissionController(
@@ -461,6 +463,15 @@ def setup(world_sdf=None, contract=None, mjcf=None, algo="pvfh_prob",
     S["make_plant"] = lambda: MujocoPlant(world, movers, F, start, waypoints,
                                           formation, spacing, payload, mjcf, video, gui)
     return S
+
+
+def _gate_stats(leader):
+    g = getattr(leader, "gate_stats", None)
+    if callable(g):
+        g = g()
+    if g is None and getattr(leader, "monitor", None) is not None:
+        g = dict(leader.monitor.stats)
+    return g
 
 
 class MissionLog:
@@ -542,6 +553,8 @@ class MissionLog:
             payload_tilt_max_deg=float(max(self.tilt_hist, default=0.0)),
             wall_s=wall_s, world=os.path.basename(S0["world_sdf"]),
             phase=S0.get("phase", False), t0_offset=S0.get("t0_offset", ""),
+            gate_source=S0.get("gate_source", "truth"),
+            gate_stats=_gate_stats(ctrl.leader),
             **{f"robot_{k}": v for k, v in S0.get("robot", {}).items()})
         os.makedirs(out_dir, exist_ok=True)
         hdr = list(rows[0].keys())
@@ -566,13 +579,14 @@ def run(world_sdf=None, contract=None, mjcf=None, algo="pvfh_prob",
         formation="square", spacing=1.18, payload="on_top", seed=1,
         sigma0=0.02, kin=True, video=None, out_dir=None, name=None,
         timesteps=3000, verbose=True, gate="exact", hold_err=0.6, gui=False,
-        phase=False, robot=None):
+        phase=False, robot=None, gate_source="truth", mon_alpha=0.05):
     """One physics mission, controller and plant in one process. Returns the
     summary dict (also written as JSON)."""
     out_dir = out_dir or os.path.join(ROOT, "results", "mujoco")
     name = name or f"{algo}_{formation}_{payload}_s{seed}"
     S = setup(world_sdf, contract, mjcf, algo, formation, spacing, payload, seed,
-              sigma0, kin, video, timesteps, gate, hold_err, gui, phase, robot)
+              sigma0, kin, video, timesteps, gate, hold_err, gui, phase, robot,
+              gate_source, mon_alpha)
     ctrl, plant = S["make_controller"](), S["make_plant"]()
     log = MissionLog(S)
     t_wall = time.perf_counter()
@@ -625,6 +639,9 @@ def main(argv=None):
     ap.add_argument("--matrix", action="store_true",
                     help="formations x payload modes for --algo")
     ap.add_argument("--output", default=None)
+    ap.add_argument("--phase", action="store_true", help="randomised traffic phase")
+    ap.add_argument("--gate-source", default="truth",
+                    choices=["truth", "audit", "sensor", "learned"])
     a = ap.parse_args(argv)
     out = a.output or os.path.join(ROOT, "results", "mujoco")
     os.makedirs(out, exist_ok=True)
@@ -632,12 +649,15 @@ def main(argv=None):
         (a.formation, a.spacing or (1.18 if a.formation == "square" else 0.60), a.payload)]
     ok = True
     for formation, spacing, payload in jobs:
-        name = f"{a.algo}_{formation}_{payload}_s{a.seed}" + ("_nokin" if a.no_kin else "")
+        name = (f"{a.algo}_{formation}_{payload}_s{a.seed}" + ("_nokin" if a.no_kin else "")
+                + ("_ph1" if a.phase else "")
+                + ("" if a.gate_source == "truth" else f"_{a.gate_source}"))
         S = run(a.world, a.contract, algo=a.algo, formation=formation,
                 spacing=spacing, payload=payload, seed=a.seed, sigma0=a.sigma0,
                 kin=not a.no_kin, out_dir=out, name=name,
                 hold_err=0.0 if a.no_hold else 0.6, gui=a.gui,
-                video=os.path.join(out, name + ".mp4") if a.video else None)
+                video=os.path.join(out, name + ".mp4") if a.video else None,
+                phase=a.phase, gate_source=a.gate_source)
         ok &= S["reached_goal"]
     return 0 if ok else 1
 

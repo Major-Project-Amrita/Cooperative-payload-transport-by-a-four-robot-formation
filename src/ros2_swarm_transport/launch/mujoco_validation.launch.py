@@ -4,6 +4,8 @@ in lockstep.
     ros2 launch ros2_swarm_transport mujoco_validation.launch.py algo:=mpc payload:=on_top
     ... gui:=true                 (interactive MuJoCo window, real time)
     ... video:=/tmp/mission.mp4 output_dir:=$HOME/ros2_ws/results/mujoco_ros
+    ... algo:=pavfh traffic_phase:=true gate_source:=learned   (proposed PA-VFH,
+        random traffic phase, learned conformal safety monitor)
 """
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, RegisterEventHandler, Shutdown
@@ -17,13 +19,17 @@ def generate_launch_description():
     args = [('algo', 'mpc'), ('formation', 'square'), ('grid_spacing', '1.18'),
             ('payload', 'on_top'), ('seed', '1'), ('kin', 'true'),
             ('hold_err', '0.6'), ('world_sdf', ''), ('contract', ''),
-            ('video', ''), ('gui', 'false'), ('output_dir', ''), ('run_name', '')]
+            ('video', ''), ('gui', 'false'), ('output_dir', ''), ('run_name', ''),
+            ('traffic_phase', 'false'), ('gate_source', 'truth'), ('mon_alpha', '0.05')]
     common = {'algo': LC('algo'), 'formation': LC('formation'),
               'grid_spacing': PV(LC('grid_spacing'), value_type=float),
               'payload': LC('payload'), 'seed': PV(LC('seed'), value_type=int),
               'kin': PV(LC('kin'), value_type=bool),
               'hold_err': PV(LC('hold_err'), value_type=float),
-              'world_sdf': LC('world_sdf'), 'contract': LC('contract')}
+              'world_sdf': LC('world_sdf'), 'contract': LC('contract'),
+              'traffic_phase': PV(LC('traffic_phase'), value_type=bool),
+              'gate_source': LC('gate_source'),
+              'mon_alpha': PV(LC('mon_alpha'), value_type=float)}
     plant = Node(package='ros2_swarm_transport', executable='mujoco_plant',
                  output='screen', parameters=[common, {'video': LC('video'),
                                       'gui': PV(LC('gui'), value_type=bool)}])

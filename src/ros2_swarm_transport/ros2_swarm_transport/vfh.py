@@ -161,6 +161,10 @@ def scan_ranges_dyn(pos, world, movers, t_now, nb, max_sense, v: VfhConfig,
         pred_lead = v.pred_lead
     amin, amax = _beam_fan(v, boresight)
     dth = (amax - amin) / nb
+    provider = getattr(v, "scan_provider", None)
+    if provider is not None:             # real sensors (sensing.PointCloudScan)
+        ranges, angles = provider(pos, nb, max_sense, amin, amax)
+        return np.asarray(ranges, float), _wrap_pi(angles), dth
     ranges, angles = lidar_scan(pos, world, nb, max_sense, amin, amax)
     if movers:
         for dt in _horizon_samples(pred_lead, v.pred_dt):
@@ -174,8 +178,11 @@ def sensor_noise(ranges, v: VfhConfig, rng=None):
     """Apply the range-noise model (sensor_noise.m port).
     lidar: s = sigma0;  tof: s = sigma0 + k_rng * d (linear)."""
     max_r = v.sense.get("max_range", float("inf"))
-    rng = np.random.default_rng() if rng is None else rng
     r = np.asarray(ranges, dtype=float)
+    if getattr(v, "scan_provider", None) is not None:   # real data: no synthetic noise
+        drop = r >= max_r
+        return np.where(drop, max_r, r), np.isfinite(r), drop
+    rng = np.random.default_rng() if rng is None else rng
     s = _per_beam_sigma(r, v)
     r_noisy = r + rng.normal(0.0, 1.0, size=r.shape) * s
     drop = r_noisy >= max_r

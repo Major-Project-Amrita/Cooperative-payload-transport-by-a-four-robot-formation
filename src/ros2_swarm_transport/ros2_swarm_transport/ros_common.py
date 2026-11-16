@@ -28,6 +28,9 @@ def declare_mission_params(node):
     d('gate', 'exact')
     d('hold_err', 0.6)                 # formation feedback threshold (0 = off)
     d('timesteps', 3000)
+    d('traffic_phase', False)          # randomised mover phase keyed on seed
+    d('gate_source', 'truth')          # truth | audit | sensor | learned
+    d('mon_alpha', 0.05)               # conformal level of the learned monitor
 
 
 def _find(path):
@@ -58,7 +61,9 @@ def mission_setup(node, video=None, gui=False):
                  spacing=float(p('grid_spacing')), payload=str(p('payload')),
                  seed=int(p('seed')), sigma0=float(p('sense_sigma0')),
                  kin=bool(p('kin')), video=video, timesteps=int(p('timesteps')),
-                 gate=str(p('gate')), hold_err=float(p('hold_err')), gui=gui)
+                 gate=str(p('gate')), hold_err=float(p('hold_err')), gui=gui,
+                 phase=bool(p('traffic_phase')), gate_source=str(p('gate_source')),
+                 mon_alpha=float(p('mon_alpha')))
 
 
 class PlantProxy:

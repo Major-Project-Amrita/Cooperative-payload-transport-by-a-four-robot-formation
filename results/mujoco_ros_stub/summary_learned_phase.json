@@ -1,0 +1,32 @@
+[
+ {
+  "run": "pavfh_square_on_top_s1_ph1_learned",
+  "identical": true,
+  "state_msgs": 1158,
+  "command_msgs": 1158,
+  "reached_goal": true,
+  "total_time": 115.6999999999977,
+  "n_reject": 93,
+  "coll_mover": 0,
+  "formation_rms": 0.22971472985863947,
+  "formation_err_max": 0.6040275681506909,
+  "contact_steps_static": 3,
+  "contact_steps_mover": 0,
+  "pin_gap_max": 0.0008126207314211874
+ },
+ {
+  "run": "nn_square_on_top_s1_ph1_learned",
+  "identical": true,
+  "state_msgs": 664,
+  "command_msgs": 664,
+  "reached_goal": true,
+  "total_time": 66.30000000000051,
+  "n_reject": 0,
+  "coll_mover": 0,
+  "formation_rms": 0.08162321961315397,
+  "formation_err_max": 0.3665367601633413,
+  "contact_steps_static": 0,
+  "contact_steps_mover": 0,
+  "pin_gap_max": 0.0007733796867955947
+ }
+]
