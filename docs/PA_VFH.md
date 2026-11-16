@@ -103,7 +103,49 @@ The comparison is deliberately strict:
 Results: [EXTENDED_RESULTS.md](EXTENDED_RESULTS.md), section R9 and the
 PA-VFH rows of R3–R8.
 
-## 4. Limits
+## 4. Result of the E19 ablation (measured)
+
+450 runs: 5 laws × 5 worlds × 3 noise levels × 6 seeds, random traffic
+phase. None raised an exception. Numbers come from
+[EXTENDED_RESULTS.md](EXTENDED_RESULTS.md) R9, with 95 % intervals.
+
+| | PA-VFH | PA-VFH (no NN) | PA-VFH-K | MPC | MPPI |
+|---|---|---|---|---|---|
+| reached | **90/90** | 89/90 | 86/90 | 87/90 | 86/90 |
+| runs with any contact | 32/90 | 31/90 | **14/90** | 26/90 | 30/90 |
+| mean time, s | 90.3 | 91.4 | 88.8 | **74.7** | 79.1 |
+| rejected steps | **19.6** | 38.9 | 83.0 | 71.3 | 100.9 |
+| compute, ms/step | 0.77 | **0.64** | 1.12 | 2.46 | 4.06 |
+
+**Paired, network vs no network** (the same 90 missions):
+- **Reach:** 90 vs 89.
+- **Time:** −0.9 s [−2.0, +0.3].
+- **Rejected steps:** −19.3 [−57.9, +0.7].
+- **Contact steps:** −0.3 [−1.8, +1.1].
+
+**What this supports:**
+- The learned occupancy model points in the right direction on every
+  measure. It finished the one mission the analytic kernel did not, and it
+  halved the number of steps the gate rejected.
+- **No effect is statistically significant at this sample size.** Every
+  paired interval contains or touches 0. The rejected-step gain comes mostly
+  from a few long stalls of the analytic version at σ0 = 0.02.
+- We therefore do not claim that the network makes PA-VFH safer or faster.
+- PA-VFH has the highest reach of the five laws. It uses no contract
+  prediction and about a third of MPC's compute.
+- **PA-VFH is not the best on every measure.** MPC is about 15 s faster.
+  PA-VFH-K, which sees the movers' contract future, has fewer than half as
+  many contact runs.
+- Under the truth gate, contacts come from movers driving into a formation
+  that cannot get out of the way in time. Seeing the future (PA-VFH-K)
+  helps here; inferring it from three scans helps much less.
+
+**What would be needed for a stronger claim:**
+- more seeds on the dynamic worlds, where the laws differ;
+- a longer scan history or an explicit mover-velocity channel;
+- training on the held-out failure cases (on-policy aggregation, round 3).
+
+## 5. Limits
 
 - **Simulation only.** The network is trained and tested with a simulated
   2-D lidar.

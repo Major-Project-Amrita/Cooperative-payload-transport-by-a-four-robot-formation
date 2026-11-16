@@ -1,10 +1,9 @@
 # Paper framing: title, abstract, contribution and claim limits
 
 This file holds the revised title and abstract (review step 6) and the
-explicit limits on what the study claims (review step 5). Numbers in square
-brackets marked **[fill]** are taken from
-[EXTENDED_RESULTS.md](EXTENDED_RESULTS.md) once the running experiments have
-finished; do not type them by hand from memory.
+explicit limits on what the study claims (review step 5). Numbers come from
+[EXTENDED_RESULTS.md](EXTENDED_RESULTS.md) (E19 = section R9). Re-check them
+against the final regenerated report before submission.
 
 ## Title
 
@@ -36,8 +35,14 @@ mass, speed, friction, payload and actuator force. The proposed PA-VFH uses
 only the robots' own instantaneous scans: a small circular CNN predicts
 per-sector danger over a 0.5 s horizon from filtered scan history and feeds
 the VFH+ decision layer. Against the identical pipeline with an analytic
-kernel it **[fill: E19 paired result]**; against MPC it **[fill]**. All
-results are simulated; we state the limits of transfer to hardware.
+kernel it reached the goal in 90 of 90 ablation missions (89 of 90) and
+halved the steps rejected by the collision gate. Paired intervals still
+include no effect, so the learned component is a consistent but not yet
+significant improvement. PA-VFH had the highest reach of the five laws
+compared, at about a third of MPC's compute. MPC remained about 15 s faster,
+and a variant that sees the movers' planned trajectories had fewer than half
+as many contact runs. All results are simulated; we state the limits of
+transfer to hardware.
 
 ## Contributions
 
