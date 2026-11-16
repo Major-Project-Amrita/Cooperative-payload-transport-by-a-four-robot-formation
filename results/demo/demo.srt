@@ -1,79 +1,79 @@
 1
-00:00:00,000 --> 00:00:17,879
-This video walks through the cooperative payload transport project. A team of robots carries one rigid load through a warehouse with moving traffic. We built a replicated benchmark of local steering laws, and a new hybrid algorithm called P A V F H, which puts a small neural network inside a classical planner.
+00:00:00,000 --> 00:00:21,346
+This video walks through the cooperative payload transport project. A team of robots carries one rigid load through a warehouse with moving traffic. We built a replicated benchmark of local steering laws, and a new hybrid algorithm called PA-VFH, which puts a small neural network inside a classical planner.
 
 2
-00:00:18,379 --> 00:00:34,484
+00:00:21,846 --> 00:00:43,961
 Four differential drive robots form up around a load, pick it up, and carry it to the goal. The formation has to steer as one rigid body, while shuttles cross its path and never give way. We test eight warehouse layouts, from thirty by twenty metres up to eighty by fifty.
 
 3
-00:00:34,984 --> 00:00:54,825
+00:00:44,461 --> 00:01:07,346
 Step one was replication. We found a defect in the reference collision test, where one box edge was never checked, and corrected it. With the fix, the MATLAB and Python implementations agree step for step at zero noise, to less than a micrometre, and in 221 of 221 cells of the noisy grid.
 
 4
-00:00:55,325 --> 00:01:07,127
+00:01:07,846 --> 00:01:22,269
 Step two: every run now randomises when each shuttle starts, so no planner benefits from a lucky timetable. All results carry ninety five percent intervals, and every failed run is counted.
 
 5
-00:01:07,627 --> 00:01:34,658
+00:01:22,769 --> 00:01:54,499
 Here is the proposed algorithm. The robots' own scans are filtered beam by beam. A small circular convolutional network then reads the last three scans, their uncertainty, and the formation's own motion, and predicts how dangerous each direction will be over the next half second. The classical histogram picks a free valley, and the safety gate still checks every single move. The network has about eleven thousand parameters and runs in a fraction of a millisecond.
 
 6
-00:01:35,158 --> 00:02:01,287
+00:01:54,999 --> 00:02:26,346
 This signal plot shows the danger map over a whole mission. On top, the oracle that knows the future. In the middle, the network, which only sees noisy scans. At the bottom, the analytic kernel. The network agrees with the oracle on blocked or free in 98.2 percent of sectors, slightly better than the analytic kernel, and misses fewer blocked sectors. It does over-predict for the first seconds, before it has three frames of history.
 
 7
-00:02:01,787 --> 00:02:25,706
-Does the network help? In the ablation, P A V F H completed 90 of 90 missions, the most of the five planners, and halved the steps the safety gate rejected compared with the same pipeline without the network. The paired intervals still include no effect, so we report this as a consistent but not yet significant gain. It needs about a third of M P C's compute, but M P C is faster on average.
+00:02:26,846 --> 00:02:55,500
+Does the network help? In the ablation, PA-VFH completed 90 of 90 missions, the most of the five planners, and halved the steps the safety gate rejected compared with the same pipeline without the network. The paired intervals still include no effect, so we report this as a consistent but not yet significant gain. It needs about a third of MPC's compute, but MPC is faster on average.
 
 8
-00:02:26,206 --> 00:02:38,238
-Across eight layouts and teams of three to nine robots, P A V F H is among the most reliable laws and the cheapest to compute. No planner gets through the narrow aisle layout, which we report as an open case.
+00:02:56,000 --> 00:03:12,730
+Across eight layouts and teams of three to nine robots, PA-VFH is among the most reliable laws and the cheapest to compute. No planner gets through the narrow aisle layout, which we report as an open case.
 
 9
-00:02:38,738 --> 00:02:55,503
+00:03:13,230 --> 00:03:33,807
 Step five separates two things. The ground truth gate is a screening device that only a simulator has. The sensor monitor uses only the robots' scans. Every gate check is plotted here: the monitor stays below the truth, so it is conservative, and false accepts are rare.
 
 10
-00:02:56,003 --> 00:03:10,575
-Now physics. In MuJoCo, with wheel slip and tracking lag, the histogram planners first grazed the racks: P A V F H was clean in only 0 of 30 runs. The cause was that they steer to the smallest clearance the kinematic gate allows.
+00:03:34,307 --> 00:04:03,807
+Now physics. In MuJoCo, with wheel slip and tracking lag, the histogram planners first grazed the racks: PA-VFH was clean in only 0 of 30 runs. The cause was that they steer to the smallest clearance the kinematic gate allows.
 
 11
-00:03:11,075 --> 00:03:34,977
-This signal plot shows the fix. Red is P A V F H without a margin, touching the racks. Blue is the same mission with a ten centimetre physical safety margin in the gate, applied equally to every planner. With it, P A V F H was clean in 16 of 30 physics runs, up from 0. The remaining failures are the towed load, which swings outside the formation and defeats every planner, M P C included.
+00:04:04,307 --> 00:04:32,576
+This signal plot shows the fix. Red is PA-VFH without a margin, touching the racks. Blue is the same mission with a ten centimetre physical safety margin in the gate, applied equally to every planner. With it, PA-VFH was clean in 16 of 30 physics runs, up from 0. The remaining failures are the towed load, which swings outside the formation and defeats every planner, MPC included.
 
 12
-00:03:35,477 --> 00:03:49,405
+00:04:33,076 --> 00:04:50,192
 We then changed the robots: lighter and heavier chassis, slower and faster wheels, low friction, half and double payload, and weaker motors, while the planner keeps its nominal model. These bars count the clean runs for each planner.
 
 13
-00:03:49,905 --> 00:04:06,313
-Then ROS 2. We ran the physics plant and the controller as two ROS 2 Humble processes talking over D D S. The mission is identical to the in-process run, with a maximum difference of 0 metres over 1010 steps, for M P C, the DAgger network, and P A V F H.
+00:04:50,692 --> 00:05:10,499
+Then ROS 2. We ran the physics plant and the controller as two ROS 2 Humble processes talking over DDS. The mission is identical to the in-process run, with a maximum difference of 0 metres over 1010 steps, for MPC, the DAgger network, and PA-VFH.
 
 14
-00:04:06,813 --> 00:04:28,832
-This is the actual console output of that run, on the official ROS 2 Humble image. The package builds with colcon, seventy four tests pass, and in each of the seven lockstep cases, every metric printed by the two ROS 2 processes equals the in-process run. Then come the installed launch file, three deployment missions driven by laser scans, and the watchdog test.
+00:05:10,999 --> 00:05:40,499
+ROS 2 Humble, two processes over DDS: the MuJoCo plant node simulates and renders this video; the formation-controller node steers. Started with ros2 launch. PA-VFH with the 0.10 m safety margin delivers the load in 84 s with 0 static and 0 mover contacts.
 
 15
-00:04:29,332 --> 00:04:43,037
-This physics video was rendered by the ROS 2 plant node itself, while the controller node drove it over D D S, started with ros2 launch. P A V F H with the safety margin delivered the load in 84 seconds with no contact at all.
+00:05:40,999 --> 00:06:02,730
+The whole physics configuration through ROS 2: 6 laws, 3 payload modes, 5 seeds, 0.10 m margin, random traffic phase. 90 of 90 runs are identical to the in-process physics run in the same environment, so ROS 2 adds no error. Towed loads remain the hard case for every planner.
 
 16
-00:04:43,537 --> 00:05:01,920
-Now deployment mode. Each coloured dot is a laser return that a robot published on its scan topic. The controller fuses those scans, removes its own robots, and steers from nothing else: no map of the shuttles, no traffic plan. This run reached the goal in 64 seconds without touching a rack.
+00:06:03,230 --> 00:06:37,730
+Full deployment stack in physics. The MuJoCo node runs free (here on simulation time, /clock, because rendering slows it), takes cmd_vel and publishes odometry and a 360-beam laser scan from each physical robot. The controller (robots.launch.py: PA-VFH, sensor monitor, watchdog) sees only those scans. Result: reached in 112 s, 0 static and 0 mover contacts, pin gap 0.75 mm.
 
 17
-00:05:02,420 --> 00:05:16,702
-And the safety watchdog. At twenty seconds, robot one's lidar stops publishing. Within about half a second the controller raises the safety flag and commands every robot to stop, and they stay stopped until fresh data arrive.
+00:06:38,230 --> 00:06:53,807
+Ten real-time missions: MuJoCo physics, laser scans over DDS, PA-VFH with the sensor monitor and watchdog. Contacts are counted by the physics engine; mover contacts are shuttles that never yield driving into the formation.
 
 18
-00:05:17,202 --> 00:05:37,692
-In deployment mode, the controller receives only laser scans and odometry over ROS 2, exactly as on real robots. Commands arrive every hundred milliseconds. It completed 3 of 3 missions without touching a rack. When one robot's lidar was cut mid mission, the watchdog stopped every robot within about six tenths of a second.
+00:06:54,307 --> 00:07:11,807
+Safety watchdog in physics: at t = 20 s robot 1's lidar stops publishing. 0.3 s later the controller raises /swarm/safety and commands every robot to stop (largest commanded speed afterwards: 0.00 m/s); the MuJoCo robots come to rest.
 
 19
-00:05:38,192 --> 00:05:56,639
+00:07:12,307 --> 00:07:35,192
 What we do not claim. Everything is simulated. The sensor pipeline still fails when range noise exceeds about five centimetres, so we specify a lidar accurate to a few centimetres. Shuttles never yield, and there are no people in the scenes. The learned parts carry no guarantee: the safety gate decides every move.
 
 20
-00:05:57,139 --> 00:06:08,229
+00:07:35,692 --> 00:07:51,269
 Every number in this video is read from the result files. The run guide lists every command to reproduce them, and the release archive carries a checksum for every file. Thank you for watching.

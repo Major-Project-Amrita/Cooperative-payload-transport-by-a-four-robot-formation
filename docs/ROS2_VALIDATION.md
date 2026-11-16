@@ -60,6 +60,18 @@ The script runs seven cases:
 Each case prints the ROS 2 result next to the in-process result. They
 should be identical.
 
+### 1c. MuJoCo physics validation through ROS 2 (R1, R2)
+
+Full tables: [EXTENDED_RESULTS.md](EXTENDED_RESULTS.md) R10. Tool:
+`tools/run_ros2_physics.py`, run inside Humble.
+
+| Batch | What runs | Result |
+|---|---|---|
+| **R1** (90 runs) | The P3 physics configuration through ROS 2 lockstep: 6 laws × 3 payload modes × 5 seeds, 0.10 m margin, random traffic phase. The MuJoCo plant node and the controller node run over DDS, each job on its own DDS domain. | **90/90 identical** on every metric to the in-process physics run in the same environment, so ROS 2 adds no error. Against the host's run (a different MuJoCo version), 43/90 are identical; the rest diverge from about 1e-14 floating-point differences that grow in chaotic missions. Every run reached the goal. PA-VFH is clean in 8/10 runs with the carried or virtual load. The towed load is 0/5 for PA-VFH and at most 2/5 for any law. |
+| **R2** (10 runs) | The full deployment stack in **real-time physics**: the MuJoCo plant runs free, applies `/robotN/cmd_vel`, and publishes `/robotN/odom` and `/robotN/scan` from the physical robots. The controller uses the `robots.launch.py` configuration (PA-VFH, sensor monitor, watchdog, 0.10 m margin) and sees only the scans. | **9/10 reached with zero contacts** in the physics engine. The tenth (load on top, seed 2) was hit by a shuttle (peak contact force 2,017 N) and timed out 7 m from the goal. Pin gap ≤ 0.76 mm and tilt ≤ 0.04° in the successful runs with the load on top. |
+| **Watchdog in physics** | robot1's lidar stops publishing at t = 20.0 s | `/swarm/safety` = 1 at **t = 20.3 s**; every later command is 0 m/s and the MuJoCo robots stop. No contacts. |
+| **Sim-time run** | The same deployment while rendering video, so the simulator runs about 3.5 × slower than real time | With the wall clock, the controller drifts ahead of the physics: watchdog trips, timeout and contacts. With **`use_sim_time:=true`** (the controller's timer and watchdog follow `/clock`), the run reached the goal with 0 contacts. **Lesson for deployment:** run the controller on sim time with any simulator that can fall behind real time. |
+
 ## 2. Real-sensor closed loop (level B)
 
 Setup:

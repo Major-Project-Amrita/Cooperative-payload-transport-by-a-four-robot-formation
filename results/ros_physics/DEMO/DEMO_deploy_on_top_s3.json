@@ -1,0 +1,20 @@
+{
+ "name": "DEMO_deploy_on_top_s3",
+ "mode": "free-running",
+ "algo": "pavfh",
+ "payload": "on_top",
+ "seed": 3,
+ "sigma0": 0.02,
+ "scans": true,
+ "phase": true,
+ "gate_margin": 0.1,
+ "reached": true,
+ "controller_finished": true,
+ "final_centroid_err": 0.8697233644285788,
+ "sim_time": 111.7,
+ "contact_steps_static": 0,
+ "contact_steps_mover": 0,
+ "contact_force_max": 0.0,
+ "pin_gap_max": 0.0007476347081288248,
+ "payload_tilt_max_deg": 0.02113416249452018
+}

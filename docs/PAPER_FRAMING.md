@@ -123,8 +123,9 @@ network adds.
    - Alongside it, a team-size-agnostic DAgger policy as the end-to-end
      learned baseline.
 5. **A path to deployment.**
-   - A ROS 2 package that reproduces the in-process missions exactly over
-     DDS.
+   - A ROS 2 package that reproduces the in-process MuJoCo missions
+     exactly over DDS (90/90 runs), and drives real-time MuJoCo physics
+     from laser scans alone (9/10 clean).
    - A real-sensor mode (LaserScan input).
    - A safety watchdog.
    - A sensor-accuracy requirement (σ ≤ 5 cm), derived from the
@@ -228,7 +229,7 @@ success.
 | F | Is the comparison fair? | E18 tuning | Tuning changes held-out cost little except for FGM and DWA. The defaults were not a straw man |
 | G | Does the network help PA-VFH? | E19 (R9), S3 | A consistent but not significant gain. The highest reach of five laws, at a third of MPC's compute |
 | H | Does it survive physics? | P1–P4, S1, S2 | Contacts hidden by kinematics appear. A 0.10 m margin fixes most for PA-VFH; MPC is more robust to model mismatch. Towed loads defeat all laws |
-| I | Does it run in ROS 2? | ROS2_VALIDATION §1b, S5, S6 | Identical over DDS (7/7). Real-sensor mode 3/3. The watchdog stops the team 0.6 s after a lidar failure |
+| I | Does it run in ROS 2, with physics? | ROS2_VALIDATION §1b–1c, R10, S5 | MuJoCo through ROS 2 lockstep: 90/90 runs identical to in-process. Full deployment stack in real-time MuJoCo (scans over DDS): 9/10 clean. Watchdog in physics: stop 0.3 s after a lidar failure |
 
 ### VIII. Discussion
 
@@ -321,8 +322,9 @@ Copy and keep: [§7 below](#7-what-the-paper-does-not-claim).
 | MPC faster | 74.7 vs 90.3 s | R9 |
 | Margin: PA-VFH 0/20 → 16/20 clean | P1 vs P3, virtual and on-top modes | R8; `results/mujoco_phase/` |
 | MPC more robust to model mismatch | P4: 39/40 vs PA-VFH 22/40 | R8 |
-| ROS 2 identical over DDS | 7/7 cases, 9/9 metrics | `results/ros_humble/full.log` |
-| Real-sensor ROS 2 deployment | 3/3 reached, 0 static contact; watchdog 0.6 s | `results/ros_humble/real_sensor_s*.json`, `watchdog.json` |
+| ROS 2 + MuJoCo identical to in-process | 90/90 runs, every metric (same environment) | `results/ros_physics/R1/*.row.json`, R10 |
+| Deployment stack in real-time MuJoCo | 9/10 reached with zero physics contacts | `results/ros_physics/R2/`, R10 |
+| Watchdog in physics | flag 0.3 s after a lidar failure; all commands 0 | `results/ros_physics/DEMO/DEMO_watchdog_on_top_s1.json` |
 
 ---
 

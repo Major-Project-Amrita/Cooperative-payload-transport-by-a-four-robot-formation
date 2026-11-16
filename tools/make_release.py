@@ -38,7 +38,8 @@ CORE = ["README.md", "CITATION.cff", ".zenodo.json", "docs", "tools",
         "results/mujoco_ros_stub/stub_truth.log", "results/xcheck_fixedgate",
         "results/CROSS_STACK_fixedgate.md", "results/cross_stack_fixedgate.csv",
         "results/figures_signals", "results/signals", "results/ros_humble",
-        "results/demo/demo.mp4", "results/demo/demo.srt", "results/demo_clips"]
+        "results/demo/demo.mp4", "results/demo/demo.srt", "results/demo_clips",
+        "results/ros_physics"]
 RUNS = ["results/runs", "results/runs_exactgate", "results/xcheck", "results/mujoco",
         "results/mujoco_phase", "results/mujoco_ros", "results/mujoco_ros_stub",
         "matlab_ref/logs/paper/runs"]

@@ -12,6 +12,7 @@ Sections (each skipped if its input does not exist yet):
   R7  learned components (DAgger policy, conformal monitor)
   R8  physics: P1 replication and P2 robot-parameter sweep, every run listed
   R9  E19 PA-VFH ablation: does the neural occupancy model help?
+  R10 MuJoCo physics through ROS 2 (lockstep vs in-process; free-running with real sensors)
 Intervals: reach and event rates with Wilson 95 %; means with a 2,000-sample
 percentile bootstrap 95 %.
 """
@@ -567,6 +568,71 @@ def r9():
         L.append("")
 
 
+def r10():
+    base = os.path.join(RES, "ros_physics")
+    R1 = [json.load(open(f)) for f in sorted(glob.glob(os.path.join(base, "R1", "*.row.json")))]
+    R2 = [json.load(open(f)) for f in sorted(glob.glob(os.path.join(base, "R2", "*.row.json")))]
+    if not (R1 or R2):
+        return
+    L.extend(["## R10. MuJoCo physics validation through ROS 2 (Humble, DDS)", "",
+              "Run with `tools/run_ros2_physics.py` inside ROS 2 Humble (the official "
+              "`ros:humble-ros-base` image). Each job uses its own DDS domain.", ""])
+    if R1:
+        d = pd.DataFrame(R1)
+        ok = d[d.get("error").isna()] if "error" in d else d
+        n_id = int(ok.identical_to_inprocess.fillna(False).astype(bool).sum())
+        same = d["identical_same_env"].dropna() if "identical_same_env" in d else pd.Series([], dtype=bool)
+        L.extend([f"**R1: lockstep.** The P3 configuration (0.10 m gate margin, random "
+                  f"traffic phase, motion limits on). The MuJoCo plant and the formation "
+                  f"controller run as two ROS 2 processes, {len(d)} runs.", "",
+                  f"- **ROS 2 vs in-process, same environment** (the container's MuJoCo 3.17): "
+                  f"{int(same.astype(bool).sum())}/{len(same)} runs identical on every metric. "
+                  f"ROS 2 adds no error.",
+                  f"- **ROS 2 in the container vs the host's in-process P3** (MuJoCo 4.0.1): "
+                  f"{n_id}/{len(ok)} identical within relative 1e-6. The rest diverge from "
+                  f"floating-point differences between MuJoCo versions (about 1e-14). Those "
+                  f"differences grow in chaotic missions, where one gate decision flips. "
+                  f"Compare the two environments statistically, as in the table below "
+                  f"against R8 P3.", ""])
+        d["clean"] = d.reached_goal.fillna(False).astype(bool) & (d.contact_steps_static == 0) & \
+            (d.contact_steps_mover == 0)
+        rows = []
+        for (a, p), x in d.groupby(["algo", "payload"]):
+            rows.append(dict(law=NAME.get(a, a), payload=p, runs=len(x),
+                             same_env_identical=f"{int(x.identical_same_env.fillna(False).astype(bool).sum())}/{len(x)}"
+                             if "identical_same_env" in x else "-",
+                             host_identical=f"{int(x.identical_to_inprocess.fillna(False).astype(bool).sum())}/{len(x)}",
+                             reached=rate(int(x.reached_goal.fillna(False).astype(bool).sum()), len(x)),
+                             clean=rate(int(x.clean.sum()), len(x)),
+                             time=mci(x[x.reached_goal.fillna(False).astype(bool)].total_time)))
+        L.extend(tbl(rows, ["law", "payload", "runs", "same_env_identical", "host_identical",
+                            "reached", "clean", "time"]))
+    if R2:
+        d = pd.DataFrame(R2)
+        L.extend(["**R2: the full deployment stack in physics.** The MuJoCo plant runs "
+                  "free at 10 Hz wall clock (real time; no video), applies `/robotN/cmd_vel`, and publishes "
+                  "`/robotN/odom` and `/robotN/scan` (360 beams, sigma = 0.02 m) from the physical "
+                  "robots. The controller uses the `robots.launch.py` configuration: PA-VFH, the "
+                  "sensor monitor, the watchdog and a 0.10 m margin. It steers from the scans only. "
+                  "Contacts are counted by the physics engine.", ""])
+        rows = []
+        for p, x in d.groupby("payload"):
+            rows.append(dict(payload=p, runs=len(x),
+                             reached=rate(int(x.reached.fillna(False).astype(bool).sum()), len(x)),
+                             static_contact_runs=rate(int((x.contact_steps_static > 0).sum()), len(x)),
+                             mover_contact_runs=rate(int((x.contact_steps_mover > 0).sum()), len(x)),
+                             time=mci(x[x.reached.fillna(False).astype(bool)].sim_time),
+                             pin_gap_max_mm=mci(1000 * x.pin_gap_max, "{:.2f}"),
+                             tilt_max_deg=mci(x.payload_tilt_max_deg, "{:.3f}")))
+        L.extend(tbl(rows, ["payload", "runs", "reached", "static_contact_runs",
+                            "mover_contact_runs", "time", "pin_gap_max_mm", "tilt_max_deg"]))
+        cols = ["name", "reached", "sim_time", "contact_steps_static", "contact_steps_mover",
+                "pin_gap_max", "payload_tilt_max_deg", "wall_s"]
+        L.extend(["Every R2 run:", ""])
+        L.extend(tbl([{c: (f"{r[c]:.4g}" if isinstance(r.get(c), float) else r.get(c)) for c in cols}
+                      for r in R2], cols))
+
+
 def r8():
     files = sorted(glob.glob(os.path.join(RES, "mujoco_phase", "*.json")))
     failed = sorted(glob.glob(os.path.join(RES, "mujoco_phase", "*.failed")))
@@ -618,7 +684,7 @@ def r8():
 
 
 if __name__ == "__main__":
-    for fn in (r1, r2, r3, r4, r5, r6, r7, r8, r9):
+    for fn in (r1, r2, r3, r4, r5, r6, r7, r8, r9, r10):
         try:
             fn()
         except Exception as e:                   # noqa: BLE001

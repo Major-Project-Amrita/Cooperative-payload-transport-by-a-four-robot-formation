@@ -1357,3 +1357,55 @@ Paired PA-VFH minus PA-VFH (no NN) on 90 common (world, noise, seed) missions (c
 
 A negative difference favours the network. An interval that contains 0 means no measurable effect at this sample size.
 
+## R10. MuJoCo physics validation through ROS 2 (Humble, DDS)
+
+Run with `tools/run_ros2_physics.py` inside ROS 2 Humble (the official `ros:humble-ros-base` image). Each job uses its own DDS domain.
+
+**R1: lockstep.** The P3 configuration (0.10 m gate margin, random traffic phase, motion limits on). The MuJoCo plant and the formation controller run as two ROS 2 processes, 90 runs.
+
+- **ROS 2 vs in-process, same environment** (the container's MuJoCo 3.17): 90/90 runs identical on every metric. ROS 2 adds no error.
+- **ROS 2 in the container vs the host's in-process P3** (MuJoCo 4.0.1): 43/90 identical within relative 1e-6. The rest diverge from floating-point differences between MuJoCo versions (about 1e-14). Those differences grow in chaotic missions, where one gate decision flips. Compare the two environments statistically, as in the table below against R8 P3.
+
+| law | payload | runs | same_env_identical | host_identical | reached | clean | time |
+|---|---|---|---|---|---|---|---|
+| DWA | behind | 5 | 5/5 | 0/5 | 5/5 [0.57, 1.00] | 0/5 [0.00, 0.43] | 98.6 [69.3, 141.9] |
+| DWA | on_top | 5 | 5/5 | 4/5 | 5/5 [0.57, 1.00] | 5/5 [0.57, 1.00] | 109.8 [58.5, 209.2] |
+| DWA | virtual | 5 | 5/5 | 4/5 | 5/5 [0.57, 1.00] | 5/5 [0.57, 1.00] | 109.8 [58.5, 209.2] |
+| MPC | behind | 5 | 5/5 | 0/5 | 5/5 [0.57, 1.00] | 2/5 [0.12, 0.77] | 110.4 [59.2, 210.1] |
+| MPC | on_top | 5 | 5/5 | 4/5 | 5/5 [0.57, 1.00] | 5/5 [0.57, 1.00] | 93.5 [58.3, 162.0] |
+| MPC | virtual | 5 | 5/5 | 4/5 | 5/5 [0.57, 1.00] | 5/5 [0.57, 1.00] | 93.5 [58.3, 162.0] |
+| MPPI | behind | 5 | 5/5 | 0/5 | 5/5 [0.57, 1.00] | 0/5 [0.00, 0.43] | 136.5 [65.4, 252.4] |
+| MPPI | on_top | 5 | 5/5 | 3/5 | 5/5 [0.57, 1.00] | 5/5 [0.57, 1.00] | 103.6 [60.0, 186.0] |
+| MPPI | virtual | 5 | 5/5 | 4/5 | 5/5 [0.57, 1.00] | 5/5 [0.57, 1.00] | 103.6 [60.0, 184.6] |
+| NN (DAgger) | behind | 5 | 5/5 | 0/5 | 5/5 [0.57, 1.00] | 2/5 [0.12, 0.77] | 113.1 [57.7, 208.3] |
+| NN (DAgger) | on_top | 5 | 5/5 | 4/5 | 5/5 [0.57, 1.00] | 5/5 [0.57, 1.00] | 92.4 [56.9, 161.4] |
+| NN (DAgger) | virtual | 5 | 5/5 | 4/5 | 5/5 [0.57, 1.00] | 5/5 [0.57, 1.00] | 92.4 [56.9, 161.4] |
+| PA-VFH | behind | 5 | 5/5 | 0/5 | 5/5 [0.57, 1.00] | 0/5 [0.00, 0.43] | 187.3 [119.4, 305.6] |
+| PA-VFH | on_top | 5 | 5/5 | 4/5 | 5/5 [0.57, 1.00] | 4/5 [0.38, 0.96] | 143.2 [91.4, 239.7] |
+| PA-VFH | virtual | 5 | 5/5 | 3/5 | 5/5 [0.57, 1.00] | 4/5 [0.38, 0.96] | 147.2 [91.4, 241.5] |
+| PA-VFH-K | behind | 5 | 5/5 | 0/5 | 5/5 [0.57, 1.00] | 0/5 [0.00, 0.43] | 164.6 [107.6, 264.0] |
+| PA-VFH-K | on_top | 5 | 5/5 | 1/5 | 5/5 [0.57, 1.00] | 2/5 [0.12, 0.77] | 151.5 [90.2, 263.2] |
+| PA-VFH-K | virtual | 5 | 5/5 | 4/5 | 5/5 [0.57, 1.00] | 4/5 [0.38, 0.96] | 151.5 [90.1, 260.5] |
+
+**R2: the full deployment stack in physics.** The MuJoCo plant runs free at 10 Hz wall clock (real time; no video), applies `/robotN/cmd_vel`, and publishes `/robotN/odom` and `/robotN/scan` (360 beams, sigma = 0.02 m) from the physical robots. The controller uses the `robots.launch.py` configuration: PA-VFH, the sensor monitor, the watchdog and a 0.10 m margin. It steers from the scans only. Contacts are counted by the physics engine.
+
+| payload | runs | reached | static_contact_runs | mover_contact_runs | time | pin_gap_max_mm | tilt_max_deg |
+|---|---|---|---|---|---|---|---|
+| on_top | 5 | 4/5 [0.38, 0.96] | 1/5 [0.04, 0.62] | 1/5 [0.04, 0.62] | 115.4 [104.7, 124.4] | 0.92 [0.72, 1.29] | 0.059 [0.020, 0.130] |
+| virtual | 5 | 5/5 [0.57, 1.00] | 0/5 [0.00, 0.43] | 0/5 [0.00, 0.43] | 134.4 [106.7, 178.0] | 0.00 [0.00, 0.00] | 0.000 [0.000, 0.000] |
+
+Every R2 run:
+
+| name | reached | sim_time | contact_steps_static | contact_steps_mover | pin_gap_max | payload_tilt_max_deg | wall_s |
+|---|---|---|---|---|---|---|---|
+| R2_pavfh_square_on_top_s1 | True | 117.4 | 0 | 0 | 0.0007536 | 0.03537 | 117.7 |
+| R2_pavfh_square_on_top_s2 | False | 401 | 3 | 26 | 0.001664 | 0.1982 | 401.3 |
+| R2_pavfh_square_on_top_s3 | True | 126.9 | 0 | 0 | 0.0007145 | 0.02354 | 127.1 |
+| R2_pavfh_square_on_top_s4 | True | 100.4 | 0 | 0 | 0.0007288 | 0.01825 | 100.5 |
+| R2_pavfh_square_on_top_s5 | True | 116.9 | 0 | 0 | 0.0007335 | 0.02069 | 117.3 |
+| R2_pavfh_square_virtual_s1 | True | 110.4 | 0 | 0 | 0 | 0 | 110.4 |
+| R2_pavfh_square_virtual_s2 | True | 219.1 | 0 | 0 | 0 | 0 | 219.3 |
+| R2_pavfh_square_virtual_s3 | True | 131.2 | 0 | 0 | 0 | 0 | 131.3 |
+| R2_pavfh_square_virtual_s4 | True | 110.2 | 0 | 0 | 0 | 0 | 110.7 |
+| R2_pavfh_square_virtual_s5 | True | 101.3 | 0 | 0 | 0 | 0 | 101.8 |
+

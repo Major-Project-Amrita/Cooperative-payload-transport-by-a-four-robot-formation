@@ -573,6 +573,32 @@ This measures robustness to a robot that is not what the planner thinks.
 - **Free-running (deployment):** the controller steps on a 10 Hz timer
   using the latest `/odom` and `/scan`. That is what real robots do (G26).
 
+### F4b. Simulation time (`use_sim_time`)
+
+A free-running controller steps on a timer. Two kinds of clock exist:
+- **The wall clock.** If the simulator falls behind real time (for example
+  while rendering video), the controller runs ahead of the physics. Its
+  watchdog then sees "stale" data, and the two drift apart.
+- **Simulation time.** With `use_sim_time:=true`, the timer and the
+  watchdog follow `/clock`, which the MuJoCo plant publishes, so both sides
+  stay in step whatever the simulator's speed.
+
+This project measured the difference. On the wall clock, a rendered run
+timed out with contacts; on sim time, the same run was clean
+([ROS2_VALIDATION.md](ROS2_VALIDATION.md) §1c).
+
+### F4c. Physics through ROS 2: R1 and R2
+
+- **R1:** the P3 physics batch with the plant and controller as ROS 2
+  processes in lockstep. All 90 runs are identical to the in-process runs
+  in the same environment.
+- **Host vs container:** different MuJoCo versions differ in about the
+  14th digit. In a chaotic mission, one flipped gate decision then changes
+  the whole outcome. That is why identity is checked within one
+  environment, and why environments are compared statistically.
+- **R2:** the deployment stack, with the plant free-running and
+  publishing `/odom` and `/scan` from the physical robots.
+
 ### F5. Real-sensor mode: from LaserScans to a formation scan
 
 In deployment the controller must not read the simulator's map of

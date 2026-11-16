@@ -53,3 +53,5 @@ dist/
 matlab_ref/octave-workspace
 matlab_ref/logs/xcheck_fixedgate/
 results/demo/build/
+results/ros_physics/R1/*.csv
+results/ros_physics/R1_ref/*.csv

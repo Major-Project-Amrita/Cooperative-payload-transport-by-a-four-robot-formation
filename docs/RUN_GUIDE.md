@@ -267,6 +267,47 @@ It runs six stages:
 
 Results go to `results/ros_humble/`.
 
+### 6a′. MuJoCo physics validation through ROS 2 (R1, R2)
+
+Run this inside Humble (on a Humble machine, or in the Docker image of
+6b: `docker run --rm --network host -v "$PWD":/ws -w /ws swarm-humble bash -c "source /opt/ros/humble/setup.bash && …"`).
+
+**R1** is the P3 physics configuration (6 laws × 3 payload modes × 5 seeds,
+0.10 m margin, random traffic phase). The plant and the controller run as
+ROS 2 processes in lockstep over DDS, each job on its own DDS domain. About
+30 min with 3 jobs.
+
+```bash
+python3 tools/run_ros2_physics.py --batch R1 --jobs 3
+```
+
+**R1REF** runs the same 90 configurations in-process *in the same
+environment*, then marks each R1 run identical or not. About 15 min.
+
+```bash
+python3 tools/run_ros2_physics.py --batch R1REF --jobs 4
+```
+
+**R2** is the full deployment stack in real-time physics:
+- the MuJoCo plant runs free and publishes `/odom` and `/scan`;
+- the controller uses the `robots.launch.py` configuration;
+- 2 payload modes × 5 seeds.
+
+About 10 min with 2 jobs; it runs in real time, so leave the CPU free.
+
+```bash
+python3 tools/run_ros2_physics.py --batch R2 --jobs 2
+```
+
+**DEMO** records MuJoCo video of a deployment run and of the watchdog test
+(robot1's lidar stops at 20 s).
+
+```bash
+python3 tools/run_ros2_physics.py --batch DEMO --jobs 1
+```
+
+Results go to `results/ros_physics/<batch>/`; the report section is R10.
+
 ### 6b. Without a Humble machine: Docker
 
 ```bash

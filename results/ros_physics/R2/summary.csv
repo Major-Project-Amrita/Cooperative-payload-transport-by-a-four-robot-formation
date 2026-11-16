@@ -1,0 +1,11 @@
+algo,contact_force_max,contact_steps_mover,contact_steps_static,controller_finished,final_centroid_err,gate_margin,mode,name,payload,payload_tilt_max_deg,phase,pin_gap_max,reached,scans,seed,sigma0,sim_time,wall_s
+pavfh,0.0,0,0,True,0.8906875417337258,0.1,free-running,R2_pavfh_square_on_top_s1,on_top,0.0353741096254029,True,0.0007535510517490176,True,True,1,0.02,117.4,117.7
+pavfh,2017.4126361542485,26,3,False,6.969117624741157,0.1,free-running,R2_pavfh_square_on_top_s2,on_top,0.1981985098179771,True,0.0016635945736421472,False,True,2,0.02,401.0,401.3
+pavfh,0.0,0,0,True,0.8659225494306506,0.1,free-running,R2_pavfh_square_on_top_s3,on_top,0.023538126869864107,True,0.0007144694860506985,True,True,3,0.02,126.9,127.1
+pavfh,0.0,0,0,True,0.8975195102927224,0.1,free-running,R2_pavfh_square_on_top_s4,on_top,0.018249528997004067,True,0.0007287518453004036,True,True,4,0.02,100.4,100.5
+pavfh,0.0,0,0,True,0.9335038398766465,0.1,free-running,R2_pavfh_square_on_top_s5,on_top,0.020693000763719258,True,0.0007334515965228451,True,True,5,0.02,116.9,117.3
+pavfh,0.0,0,0,True,0.7182334797736861,0.1,free-running,R2_pavfh_square_virtual_s1,virtual,0.0,True,0.0,True,True,1,0.02,110.4,110.4
+pavfh,0.0,0,0,True,0.7226641220390182,0.1,free-running,R2_pavfh_square_virtual_s2,virtual,0.0,True,0.0,True,True,2,0.02,219.1,219.3
+pavfh,0.0,0,0,True,0.75056991556517,0.1,free-running,R2_pavfh_square_virtual_s3,virtual,0.0,True,0.0,True,True,3,0.02,131.2,131.3
+pavfh,0.0,0,0,True,0.6921157115659426,0.1,free-running,R2_pavfh_square_virtual_s4,virtual,0.0,True,0.0,True,True,4,0.02,110.2,110.7
+pavfh,0.0,0,0,True,0.7849714554173032,0.1,free-running,R2_pavfh_square_virtual_s5,virtual,0.0,True,0.0,True,True,5,0.02,101.3,101.8

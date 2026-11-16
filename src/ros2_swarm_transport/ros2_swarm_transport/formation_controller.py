@@ -19,7 +19,9 @@ Two ways to feed it:
   free-running (lockstep:=false; real robots, or any simulator with odometry)
       subscribes  /<robot>/odom   nav_msgs/Odometry
                   /<robot>/scan   sensor_msgs/LaserScan   (only if use_scans:=true)
-      steps on a wall-clock timer of period dt.
+      steps on a timer of period dt: wall clock by default; with
+      use_sim_time:=true the timer and the watchdog follow /clock, so a
+      simulator slower than real time (e.g. while rendering) stays in step.
 
       use_scans:=true makes the robots' own range sensors the ONLY source of
       obstacle information for steering and for the safety monitor: their
@@ -52,7 +54,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import PoseStamped, Twist
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Float64MultiArray, Int32
 
@@ -84,6 +86,11 @@ class FormationController(Node):
         self.t = 0.0
         self.log = None
         self.now = time.monotonic                    # replaceable clock (tests)
+        try:                                         # simulation time from /clock
+            if bool(self.get_parameter('use_sim_time').value):
+                self.now = lambda: self.get_clock().now().nanoseconds * 1e-9
+        except Exception:                            # noqa: BLE001  (no such parameter)
+            pass
         self.wd_timeout = float(p('watchdog_timeout'))
         self.max_v, self.max_w = float(p('max_v')), float(p('max_w'))
         self.last_odom = {n: -math.inf for n in self.robots}
@@ -111,6 +118,8 @@ class FormationController(Node):
                             history=HistoryPolicy.KEEP_LAST, depth=10)
             for n in self.robots:
                 self.create_subscription(Odometry, f'/{n}/odom', self._odom_cb(n), be)
+            self.plate = None                        # carried load pose, if published
+            self.create_subscription(PoseStamped, '/payload/pose', self._plate_cb, be)
             self.scans = None
             if bool(p('use_scans')):
                 self._setup_scans(p, be)
@@ -145,6 +154,11 @@ class FormationController(Node):
                                         1.0 - 2.0 * (q.y * q.y + q.z * q.z))
             self.last_odom[name] = self.now()
         return cb
+
+    def _plate_cb(self, msg):
+        q = msg.pose.orientation
+        self.plate = (np.array([msg.pose.position.x, msg.pose.position.y]),
+                      math.atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z)))
 
     def stop_all(self):
         for n in self.robots:
@@ -230,7 +244,7 @@ class FormationController(Node):
                 self.cmd(n, 0.0, 0.0)
             return
         was = self.ctrl.mode
-        out = self.ctrl.step(self.t, pos, yaw, None)
+        out = self.ctrl.step(self.t, pos, yaw, getattr(self, 'plate', None))
         self.t += self.dt
         self._publish(out)
         if self.ctrl.mode == 'finishing' and was != 'finishing':

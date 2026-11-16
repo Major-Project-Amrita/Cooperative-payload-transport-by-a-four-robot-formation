@@ -136,3 +136,30 @@ def _inside(P, poly):
             sgn = 1.0 if area > 0 else -1.0
         inside &= sgn * cr >= 0
     return inside
+
+
+def simulate_laserscan(i, pos, world, movers_now, robot_radius, n=360, rmax=8.0,
+                       sigma=0.02, rng=None):
+    """Simulated 2-D lidar of robot i (for test simulators that publish
+    sensor_msgs/LaserScan): ray-cast from its own pose against the static
+    world, the movers where they are now and its team-mates (disks of
+    robot_radius), plus Gaussian range noise. Returns (ranges, world-frame
+    beam angles); no return = inf."""
+    from .geometry import lidar_scan
+    from .vfh import _movers_only_scan
+    pos = np.asarray(pos, dtype=float)
+    rr, ang = lidar_scan(pos[i], world, n, rmax)
+    if movers_now:
+        rr = np.minimum(rr, _movers_only_scan(pos[i], movers_now, n, rmax, ang))
+    u = np.vstack([np.cos(ang), np.sin(ang)])
+    for j in range(len(pos)):
+        if j == i:
+            continue
+        d = pos[j] - pos[i]
+        b = d @ u
+        disc = b * b - (d @ d - robot_radius ** 2)
+        hit = (disc >= 0) & (b > 0)
+        rr = np.minimum(rr, np.where(hit, b - np.sqrt(np.maximum(disc, 0.0)), np.inf))
+    if rng is not None and sigma > 0:
+        rr = rr + rng.normal(0.0, sigma, rr.shape)
+    return np.where(rr >= rmax - 1e-6, np.inf, rr), ang
