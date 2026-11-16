@@ -41,7 +41,10 @@ include no effect, so the learned component is a consistent but not yet
 significant improvement. PA-VFH had the highest reach of the five laws
 compared, at about a third of MPC's compute. MPC remained about 15 s faster,
 and a variant that sees the movers' planned trajectories had fewer than half
-as many contact runs. All results are simulated; we state the limits of
+as many contact runs. In MuJoCo physics, PA-VFH reached the goal in every
+run but grazed static racks in all of them, as the other histogram laws did;
+MPC and the learned DAgger policy were clean in 22 of 30 and 26 of 30 runs.
+All results are simulated; we state the limits of
 transfer to hardware.
 
 ## Contributions

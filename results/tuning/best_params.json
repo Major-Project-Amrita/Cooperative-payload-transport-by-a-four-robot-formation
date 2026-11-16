@@ -142,5 +142,28 @@
     "configs": 24,
     "missions_per_config": 7,
     "wall_s": 670.5
+  },
+  "pavfh": {
+    "params": {
+      "react_gap": 0.5767,
+      "threshold": 0.2898,
+      "hysteresis_weight": 0.8584,
+      "smooth_window": 5,
+      "danger_dist_base": 1.6163,
+      "rfilter_q": 0.0875
+    },
+    "vfh_over": {
+      "react_gap": 0.5767,
+      "threshold": 0.2898,
+      "hysteresis_weight": 0.8584,
+      "smooth_window": 5,
+      "danger_dist_base": 1.6163,
+      "rfilter_q": 0.0875
+    },
+    "mean_cost": 96.0714285714288,
+    "default_cost": 127.75714285714312,
+    "configs": 24,
+    "missions_per_config": 7,
+    "wall_s": 147.2
   }
 }

@@ -145,6 +145,40 @@ phase. None raised an exception. Numbers come from
 - a longer scan history or an explicit mover-velocity channel;
 - training on the held-out failure cases (on-policy aggregation, round 3).
 
+### PA-VFH in the other experiments (measured)
+
+All numbers are from [EXTENDED_RESULTS.md](EXTENDED_RESULTS.md); every
+experiment uses random traffic phase.
+
+| Experiment | PA-VFH | Strongest comparison |
+|---|---|---|
+| E15: 8 layouts, 80 runs per law | reach 69/80; 21 contact runs; 0.85 ms | reach: NN 69/80, MPC 68/80. Contact runs: pVFH 13, PA-VFH-K 15. No law passes `wh_m_narrow` (0/10 each). |
+| E16: teams of 3–9, 150 runs per law | reach 138/150 (tied best with MPPI); 80 contact runs (the most); 0.82 ms | PA-VFH-K 135/150 with 59 contact runs; MPC 135/150 with 68 |
+| E16, K = 9 only (unseen team size) | 51/60 | MPPI 55/60, MPC 50/60 |
+| E17, audit gate, 48 runs per law | reach 48/48; 21 contact runs | PA-VFH-K 46/48 with 11 contact runs |
+| E17, sensor monitor decides | reach 38/48 (best of five); 27 contact runs | MPC 36/48 with 29 |
+| E17, learned monitor decides | reach 47/48 (best of five); 30 contact runs | MPPI 46/48 with 26 |
+| E18: tuned with equal budget, held out | training objective 127.8 → 96.1; held-out change +0.5 [−3.3, 4.9]; 50/50 reached both ways | the defaults are already near the held-out optimum for every law except FGM and DWA |
+| **P1 MuJoCo physics**, 10 runs per payload mode | **reached 30/30, but static contact in 30/30, so 0/30 clean** | MPC 22/30 clean; NN 26/30 |
+| P2 robot sweep, 8 variants × 5 runs | 0/40 clean (static contact in every run) | MPC 39/40 clean |
+
+How to read this:
+- **Kinematic simulation.** PA-VFH is consistently among the most reliable
+  laws in reach and the cheapest to compute. Its weak point is contacts with
+  moving traffic: it has more contact runs than PA-VFH-K, which sees the
+  movers' future, and more than MPC.
+- **Physics.** PA-VFH inherits the histogram family's failure: it grazes
+  static racks in every MuJoCo run. Its formation-keeping error is large
+  (25 cm on top of the load, more than 1 m in the "behind" mode).
+- **What causes it.** The histogram laws steer the centroid to the smallest
+  clearance the kinematic gate admits. With wheel slip and tracking lag in
+  physics, that clearance is used up. MPC and the DAgger policy keep a
+  larger margin.
+- **This is the largest open problem for PA-VFH.** Two directions:
+  - a physics-aware clearance margin, by enlarging the swept radius by the
+    measured tracking error;
+  - training the occupancy network on physics rollouts.
+
 ## 5. Limits
 
 - **Simulation only.** The network is trained and tested with a simulated
