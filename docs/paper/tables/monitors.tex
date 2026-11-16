@@ -1,0 +1,14 @@
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lllll}
+\toprule
+Gate & $\sigma_0$ & Reach & Contact runs & FA/1000 \\
+\midrule
+Ground truth (audit) & 0.02 & 115/120 [0.91, 0.98] & 45/120 [0.29, 0.46] & -- \\
+ & 0.10 & 116/120 [0.92, 0.99] & 44/120 [0.29, 0.46] & -- \\
+Geometric sensor monitor & 0.02 & 119/120 [0.95, 1.00] & 66/120 [0.46, 0.64] & 0.00 \\
+ & 0.10 & 63/120 [0.44, 0.61] & 81/120 [0.59, 0.75] & 0.00 \\
+Learned + conformal ($\alpha{=}0.05$) & 0.02 & 116/120 [0.92, 0.99] & 67/120 [0.47, 0.64] & 2.88 \\
+ & 0.10 & 112/120 [0.87, 0.97] & 76/120 [0.54, 0.71] & 5.37 \\
+\bottomrule
+\end{tabular}

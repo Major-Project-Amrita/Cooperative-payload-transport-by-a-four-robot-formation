@@ -55,3 +55,13 @@ matlab_ref/logs/xcheck_fixedgate/
 results/demo/build/
 results/ros_physics/R1/*.csv
 results/ros_physics/R1_ref/*.csv
+docs/paper/*.aux
+docs/paper/*.log
+docs/paper/*.fls
+docs/paper/*.fdb_latexmk
+docs/paper/*.blg
+docs/paper/*.out
+docs/concept_guide/*.aux
+docs/concept_guide/*.log
+docs/concept_guide/*.out
+docs/concept_guide/*.toc

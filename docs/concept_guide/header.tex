@@ -1,0 +1,16 @@
+
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small Cooperative payload transport --- concept guide}
+\fancyhead[R]{\small\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+\usepackage{xcolor}
+\definecolor{acc}{HTML}{2A78D6}
+\usepackage{sectsty}
+\allsectionsfont{\color{acc}\sffamily}
+\setlength{\parskip}{4pt}
+\usepackage{float}
+\let\origfigure\figure
+\let\endorigfigure\endfigure
+\renewenvironment{figure}[1][2] {\expandafter\origfigure\expandafter[H]} {\endorigfigure}

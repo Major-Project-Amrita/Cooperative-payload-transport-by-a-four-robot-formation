@@ -26,6 +26,8 @@ Start here:
 |---|---|
 | [docs/RUN_GUIDE.md](docs/RUN_GUIDE.md) | **start here**: every command to reproduce every result, with timings |
 | [results/demo/demo.mp4](results/demo/demo.mp4) | 5-minute narrated demo video (captions: `demo.srt`) |
+| [docs/paper/main.pdf](docs/paper/main.pdf) | **the manuscript** (LaTeX source `docs/paper/main.tex`) |
+| [docs/concept_guide/concept_guide.pdf](docs/concept_guide/concept_guide.pdf) | **concept guide PDF**: every concept, every graph explained |
 | [docs/PAPER_FRAMING.md](docs/PAPER_FRAMING.md) | title, abstract, contributions and what the study does not claim |
 | [docs/SIGNALS.md](docs/SIGNALS.md) | signal plots, one per claim (S1–S6) |
 | [docs/ROS2_VALIDATION.md](docs/ROS2_VALIDATION.md) | ROS 2 Humble validation over DDS, deployment mode, watchdog, readiness for hardware |

@@ -1,0 +1,18 @@
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lllr}
+\toprule
+Law & Mechanism & Mover information & ms/step \\
+\midrule
+VFH & histogram & predicted scan & 0.91 \\
+FGM & gap & predicted scan & 1.70 \\
+DWA & velocity sampling & predicted scan & 2.05 \\
+MPC & lattice MPC & predicted scan & 3.89 \\
+MPPI & sampling MPC & predicted scan & 5.90 \\
+pVFH & histogram + horizon & contract & 2.04 \\
+PA-VFH-K & + range filter + kernel & contract & 1.88 \\
+NN (DAgger) & learned policy (DAgger) & predicted scan & 1.76 \\
+PA-VFH (no NN) & + range filter + kernel & \textbf{own scans only} & 0.71 \\
+\textbf{PA-VFH} & + range filter + learned occupancy & \textbf{own scans only} & 0.85 \\
+\bottomrule
+\end{tabular}

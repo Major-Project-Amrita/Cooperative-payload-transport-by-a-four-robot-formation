@@ -383,6 +383,25 @@ Writes `results/figures_signals/S1–S6`: time-series proofs, one per claim
 
 ---
 
+## 7b. The manuscript and the concept guide (PDF)
+
+Needs TeX Live (pdflatex, xelatex, latexmk; IEEEtran) and pandoc.
+
+The paper's tables and quoted numbers come from the result files:
+
+```bash
+python3 tools/make_paper_tables.py && cd docs/paper && latexmk -pdf main.tex && cd ../..
+```
+
+The concept guide, with every figure embedded:
+
+```bash
+python3 tools/make_concept_pdf.py
+```
+
+Outputs: `docs/paper/main.pdf` (8 pages, IEEE two-column) and
+`docs/concept_guide/concept_guide.pdf`.
+
 ## 8. Demo video
 
 ```bash
