@@ -66,6 +66,10 @@ def numbers():
                      if not f.endswith("_signals.json")]
     wd = os.path.join(rh, "watchdog.json")
     N["ros_wd"] = json.load(open(wd)) if os.path.exists(wd) else None
+    dm = os.path.join(rh, "demo")
+    for k in ("ros2_launch_pavfh", "deploy", "watchdog"):
+        f = os.path.join(dm, k + ".json")
+        N["demo_" + k] = json.load(open(f)) if os.path.exists(f) else None
     log = os.path.join(rh, "full.log")
     N["ros_cases"] = open(log).read().count("=== ") if os.path.exists(log) else 0
     return N
@@ -230,10 +234,15 @@ def segment_still(png, wav, out, pad=0.9):
 def segment_clip(clip, ovl, wav, out, pad=0.9, start=0.0):
     d = (dur(wav) if wav else 8.0) + pad
     audio = (["-i", wav] if wav else ["-f", "lavfi", "-i", "anullsrc=r=22050:cl=mono"])
-    ff(["-stream_loop", "-1", "-ss", f"{start:.1f}", "-i", clip, "-i", ovl] + audio +
-       ["-t", f"{d:.2f}", "-filter_complex",
-        f"[0:v]scale={W}:{H},fps={FPS}[v];[v][1:v]overlay=0:0,format=yuv420p[o]",
-        "-map", "[o]", "-map", "2:a", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+    if ovl:
+        ins, fc, amap = ["-i", ovl], (f"[0:v]scale={W}:{H},fps={FPS},tpad=stop_mode=clone:"
+                                      f"stop_duration=120[v];[v][1:v]overlay=0:0,format=yuv420p[o]"), "2:a"
+    else:
+        ins, fc, amap = [], (f"[0:v]scale={W}:{H},fps={FPS},tpad=stop_mode=clone:"
+                             f"stop_duration=120,format=yuv420p[o]"), "1:a"
+    ff(["-ss", f"{start:.1f}", "-i", clip] + ins + audio +
+       ["-t", f"{d:.2f}", "-filter_complex", fc,
+        "-map", "[o]", "-map", amap, "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
         "-af", "apad", "-c:a", "aac", "-ar", "44100", "-ac", "1", out])
     return d
 
@@ -375,6 +384,43 @@ def script(N):
                       f"processes talking over D D S. The mission is identical to the in-process "
                       f"run, with a maximum difference of {s5.get('max_diff', 0):.0f} metres over "
                       f"{s5.get('steps', 0)} steps, for M P C, the DAgger network, and P A V F H."))
+    dm = lambda f: F(os.path.join("results/ros_humble/demo", f))
+    if os.path.exists(dm("terminal_replay.mp4")):
+        S.append(dict(kind="clip", clip=dm("terminal_replay.mp4"), overlay=False,
+                      title="ROS 2 Humble console",
+                      say="This is the actual console output of that run, on the official ROS 2 "
+                          "Humble image. The package builds with colcon, seventy four tests pass, "
+                          "and in each of the seven lockstep cases, every metric printed by the two "
+                          "ROS 2 processes equals the in-process run. Then come the installed launch "
+                          "file, three deployment missions driven by laser scans, and the watchdog test."))
+    L_ = N.get("demo_ros2_launch_pavfh")
+    if L_ and os.path.exists(dm("ros2_launch_pavfh.mp4")):
+        S.append(dict(kind="clip", clip=dm("ros2_launch_pavfh.mp4"), start=5.0,
+                      title="ros2 launch: physics rendered by the ROS 2 plant node",
+                      caption=f"PA-VFH, 0.10 m margin, random traffic phase: reached in "
+                              f"{L_['total_time']:.0f} s, {L_['contact_steps_static']} static and "
+                              f"{L_['contact_steps_mover']} mover contact steps",
+                      say=f"This physics video was rendered by the ROS 2 plant node itself, while "
+                          f"the controller node drove it over D D S, started with ros2 launch. "
+                          f"P A V F H with the safety margin delivered the load in "
+                          f"{L_['total_time']:.0f} seconds with no contact at all."))
+    D_ = N.get("demo_deploy")
+    if D_ and os.path.exists(dm("deploy_topdown.mp4")):
+        S.append(dict(kind="clip", clip=dm("deploy_topdown.mp4"), overlay=False,
+                      title="deployment over DDS",
+                      say=f"Now deployment mode. Each coloured dot is a laser return that a robot "
+                          f"published on its scan topic. The controller fuses those scans, removes "
+                          f"its own robots, and steers from nothing else: no map of the shuttles, "
+                          f"no traffic plan. This run reached the goal in {D_['sim_time']:.0f} "
+                          f"seconds without touching a rack."))
+    WD_ = N.get("demo_watchdog")
+    if WD_ and os.path.exists(dm("watchdog_topdown.mp4")):
+        S.append(dict(kind="clip", clip=dm("watchdog_topdown.mp4"), overlay=False,
+                      title="watchdog",
+                      say="And the safety watchdog. At twenty seconds, robot one's lidar stops "
+                          "publishing. Within about half a second the controller raises the safety "
+                          "flag and commands every robot to stop, and they stay stopped until fresh "
+                          "data arrive."))
     if rr:
         k = sum(r["reached"] for r in rr)
         S.append(dict(kind="still", kicker="ROS 2 deployment mode", title="Driving from the robots' own lidar",
@@ -417,8 +463,10 @@ def main():
         wav = tts(s["say"], os.path.join(TMP, f"s{i:02d}.wav"))
         mp4 = os.path.join(TMP, f"s{i:02d}.mp4")
         if s["kind"] == "clip":
-            ovl = os.path.join(TMP, f"o{i:02d}.png")
-            overlay_png(ovl, s["title"], s.get("caption", ""))
+            ovl = None
+            if s.get("overlay", True):
+                ovl = os.path.join(TMP, f"o{i:02d}.png")
+                overlay_png(ovl, s["title"], s.get("caption", ""))
             d = segment_clip(s["clip"], ovl, wav, mp4, start=s.get("start", 0.0))
         else:
             if s["kind"] == "pipeline":

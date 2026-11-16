@@ -20,7 +20,8 @@ def generate_launch_description():
             ('payload', 'on_top'), ('seed', '1'), ('kin', 'true'),
             ('hold_err', '0.6'), ('world_sdf', ''), ('contract', ''),
             ('video', ''), ('gui', 'false'), ('output_dir', ''), ('run_name', ''),
-            ('traffic_phase', 'false'), ('gate_source', 'truth'), ('mon_alpha', '0.05')]
+            ('traffic_phase', 'false'), ('gate_source', 'truth'), ('mon_alpha', '0.05'),
+            ('gate_margin', '0.0')]
     common = {'algo': LC('algo'), 'formation': LC('formation'),
               'grid_spacing': PV(LC('grid_spacing'), value_type=float),
               'payload': LC('payload'), 'seed': PV(LC('seed'), value_type=int),
@@ -29,7 +30,8 @@ def generate_launch_description():
               'world_sdf': LC('world_sdf'), 'contract': LC('contract'),
               'traffic_phase': PV(LC('traffic_phase'), value_type=bool),
               'gate_source': LC('gate_source'),
-              'mon_alpha': PV(LC('mon_alpha'), value_type=float)}
+              'mon_alpha': PV(LC('mon_alpha'), value_type=float),
+              'gate_margin': PV(LC('gate_margin'), value_type=float)}
     plant = Node(package='ros2_swarm_transport', executable='mujoco_plant',
                  output='screen', parameters=[common, {'video': LC('video'),
                                       'gui': PV(LC('gui'), value_type=bool)}])

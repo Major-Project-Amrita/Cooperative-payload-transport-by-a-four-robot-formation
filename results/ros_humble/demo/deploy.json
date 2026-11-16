@@ -1,0 +1,12 @@
+{
+ "sigma": 0.02,
+ "seed": 2,
+ "traffic_phase": true,
+ "controller": "robots.launch.py defaults: algo pavfh, gate_source sensor",
+ "reached": true,
+ "sim_time": 64.2,
+ "wall_s": 64.2,
+ "contact_steps": 11,
+ "contact_steps_static": 0,
+ "min_gap": -0.428
+}

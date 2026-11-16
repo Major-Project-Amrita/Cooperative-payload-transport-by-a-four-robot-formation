@@ -161,12 +161,12 @@ def s2(plt):
         return
     d = pd.read_csv(p)
     sp = np.r_[0, np.hypot(np.diff(d.payload_x), np.diff(d.payload_y)) / np.diff(d.t).clip(1e-6)]
-    panels = [("payload speed (m/s)", sp, C["a"]),
-              ("formation error, max over robots (m)", d.slot_err_max, C["b"]),
-              ("payload tilt (deg)", d.tilt_deg, C["c"]),
-              ("pin gap (mm)", 1000 * d.pin_gap, C["d"]),
-              ("clearance to anything (m)", d.clearance - R_ROBOT, C["e"])]
-    fig, ax = plt.subplots(len(panels) + 1, 1, figsize=(8, 9), sharex=True)
+    panels = [("payload\nspeed (m/s)", sp, C["a"]),
+              ("formation\nerror (m)", d.slot_err_max, C["b"]),
+              ("payload\ntilt (deg)", d.tilt_deg, C["c"]),
+              ("pin gap\n(mm)", 1000 * d.pin_gap, C["d"]),
+              ("clearance\n(m)", d.clearance - R_ROBOT, C["e"])]
+    fig, ax = plt.subplots(len(panels) + 1, 1, figsize=(8, 9.5), sharex=True)
     for a, (lab, y, c) in zip(ax, panels):
         a.plot(d.t, y, color=c)
         a.set_ylabel(lab, fontsize=8)
@@ -179,6 +179,7 @@ def s2(plt):
     ax[-1].set_xlabel("mission time (s)")
     ax[0].set_title("S2. One physics mission, signal by signal (PA-VFH, 0.10 m margin, "
                     "load on top, seed 1)")
+    fig.align_ylabels(ax)
     save(fig, "S2_physics_signals")
 
 

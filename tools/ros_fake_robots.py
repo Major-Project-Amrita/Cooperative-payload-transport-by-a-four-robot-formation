@@ -76,6 +76,8 @@ class FakeRobots(Node):
         self.t0 = time.monotonic()
         self.cmd_log = []             # (wall s, sim s, v, w) of robot1's cmd_vel
         self.sig_log = []             # (sim s, min gap, safety flag) per tick
+        self.pose_log = []            # per tick: t, robot poses, mover centres
+        self.scan_log = []            # per tick: map-frame scan endpoints (every 6th beam)
         self.create_timer(self.dt, self.tick)
         self.get_logger().info(f'{len(self.robots)} fake robots, sigma={self.sigma}')
 
@@ -126,6 +128,10 @@ class FakeRobots(Node):
         self.contact += int(dd <= self.r)
         self.contact_s += int(d_s <= self.r)
         self.sig_log.append((round(self.t, 2), round(dd - self.r, 4), self.safety))
+        self.pose_log.append(dict(t=round(self.t, 2), pos=np.round(self.pos, 3).tolist(),
+                                  yaw=np.round(self.yaw, 3).tolist(),
+                                  movers=[np.round(m.c, 3).tolist() + np.round(m.size, 3).tolist()
+                                          + [1.0 if m.shape == 'circle' else 0.0] for m in mk]))
         stamp = self.get_clock().now().to_msg()
         for i, n in enumerate(self.robots):
             o = Odometry()
@@ -137,6 +143,12 @@ class FakeRobots(Node):
             if self.drop_after >= 0 and self.t >= self.drop_after and i == 0:
                 continue                              # robot1's lidar has failed
             rr, ang = self._scan(i, mk)
+            ok = np.isfinite(rr[::6])
+            pts = self.pos[i] + np.column_stack([rr[::6][ok] * np.cos(ang[::6][ok]),
+                                                 rr[::6][ok] * np.sin(ang[::6][ok])])
+            if i == 0:
+                self.scan_log.append([])
+            self.scan_log[-1].append(np.round(pts, 3).tolist())
             s = LaserScan()
             s.header.stamp, s.header.frame_id = stamp, f'{n}/laser'
             s.angle_min = float(ang[0] - self.yaw[i])
@@ -173,6 +185,8 @@ class FakeRobots(Node):
             json.dump(res, open(self.out + '.json', 'w'), indent=1)
             json.dump(dict(cmd=self.cmd_log, sig=self.sig_log),
                       open(self.out + '_signals.json', 'w'))
+            json.dump(dict(poses=self.pose_log, scans=self.scan_log),
+                      open(self.out + '_trace.json', 'w'))
         raise SystemExit
 
 

@@ -51,13 +51,29 @@ We then changed the robots: lighter and heavier chassis, slower and faster wheel
 Then ROS 2. We ran the physics plant and the controller as two ROS 2 Humble processes talking over D D S. The mission is identical to the in-process run, with a maximum difference of 0 metres over 1010 steps, for M P C, the DAgger network, and P A V F H.
 
 14
-00:04:06,813 --> 00:04:27,304
-In deployment mode, the controller receives only laser scans and odometry over ROS 2, exactly as on real robots. Commands arrive every hundred milliseconds. It completed 3 of 3 missions without touching a rack. When one robot's lidar was cut mid mission, the watchdog stopped every robot within about six tenths of a second.
+00:04:06,813 --> 00:04:28,832
+This is the actual console output of that run, on the official ROS 2 Humble image. The package builds with colcon, seventy four tests pass, and in each of the seven lockstep cases, every metric printed by the two ROS 2 processes equals the in-process run. Then come the installed launch file, three deployment missions driven by laser scans, and the watchdog test.
 
 15
-00:04:27,804 --> 00:04:46,250
-What we do not claim. Everything is simulated. The sensor pipeline still fails when range noise exceeds about five centimetres, so we specify a lidar accurate to a few centimetres. Shuttles never yield, and there are no people in the scenes. The learned parts carry no guarantee: the safety gate decides every move.
+00:04:29,332 --> 00:04:43,037
+This physics video was rendered by the ROS 2 plant node itself, while the controller node drove it over D D S, started with ros2 launch. P A V F H with the safety margin delivered the load in 84 seconds with no contact at all.
 
 16
-00:04:46,750 --> 00:04:57,840
+00:04:43,537 --> 00:05:01,920
+Now deployment mode. Each coloured dot is a laser return that a robot published on its scan topic. The controller fuses those scans, removes its own robots, and steers from nothing else: no map of the shuttles, no traffic plan. This run reached the goal in 64 seconds without touching a rack.
+
+17
+00:05:02,420 --> 00:05:16,702
+And the safety watchdog. At twenty seconds, robot one's lidar stops publishing. Within about half a second the controller raises the safety flag and commands every robot to stop, and they stay stopped until fresh data arrive.
+
+18
+00:05:17,202 --> 00:05:37,692
+In deployment mode, the controller receives only laser scans and odometry over ROS 2, exactly as on real robots. Commands arrive every hundred milliseconds. It completed 3 of 3 missions without touching a rack. When one robot's lidar was cut mid mission, the watchdog stopped every robot within about six tenths of a second.
+
+19
+00:05:38,192 --> 00:05:56,639
+What we do not claim. Everything is simulated. The sensor pipeline still fails when range noise exceeds about five centimetres, so we specify a lidar accurate to a few centimetres. Shuttles never yield, and there are no people in the scenes. The learned parts carry no guarantee: the safety gate decides every move.
+
+20
+00:05:57,139 --> 00:06:08,229
 Every number in this video is read from the result files. The run guide lists every command to reproduce them, and the release archive carries a checksum for every file. Thank you for watching.
