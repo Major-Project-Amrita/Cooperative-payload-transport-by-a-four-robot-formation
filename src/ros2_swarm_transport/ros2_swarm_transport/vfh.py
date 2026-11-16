@@ -519,6 +519,23 @@ def pavfh(pos, world, movers, t_now, goal, margin, v: VfhConfig, eps,
         u_sec = np.zeros(S)
         np.maximum.at(u_sec, _sector_index(angles, S), u_beam)
     u_sec = np.where(observed, u_sec, np.maximum(u_sec, p_unk))
+    sig_rec = v.nn.get("signal_record") if (keep_history and v.nn) else None
+    if sig_rec is not None:
+        # diagnostics only: the three danger signals on the same step
+        ub = np.where(valid, expected_kernel(d_meas, sig_b, sigma_hist), p_unk)
+        u_an = np.zeros(S)
+        np.maximum.at(u_an, _sector_index(angles, S), ub)
+        u_an = np.where(observed, u_an, np.maximum(u_an, p_unk))   # same treatment
+        clean, ang_c, _ = scan_ranges_dyn(pos, world, movers, t_now, len(ranges),
+                                          max_sense, v, boresight=prev_heading,
+                                          pred_lead=v.pred_lead)
+        rtrue, _ = _sector_min(np.minimum(clean, max_sense), ang_c, S, max_sense)
+        u_or = np.where(rtrue < max_sense - 1e-6,
+                        np.exp(-(rtrue ** 2) / (2 * sigma_hist ** 2)), 0.0)
+        sig_rec.append(dict(t=float(t_now), u_used=u_sec.copy(), u_analytic=u_an,
+                            u_oracle=u_or, neural=bool(neural), observed=observed.copy(),
+                            threshold=float(v.threshold),
+                            pos=np.asarray(pos, float).copy()))
 
     hist = u_sec.copy()
     if r_geom > 0:

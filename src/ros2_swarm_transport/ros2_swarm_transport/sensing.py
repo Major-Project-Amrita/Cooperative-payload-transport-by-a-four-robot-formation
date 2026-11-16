@@ -50,7 +50,8 @@ def laserscan_to_points(pose, ranges, angle_min, angle_increment, range_min=0.0,
 class PointCloudScan:
     """Fused team point cloud -> virtual scan from any query position."""
 
-    def __init__(self, robot_radius=0.18, self_margin=0.10, max_age=0.5):
+    def __init__(self, robot_radius=0.18, self_margin=0.10, max_age=0.5, robust=True):
+        self.robust = bool(robust)
         self.r = float(robot_radius)
         self.margin = float(self_margin)
         self.max_age = float(max_age)
@@ -96,7 +97,21 @@ class PointCloudScan:
         if full:
             k %= nb
         ok = (rr < max_sense) & (k >= 0) & (k < nb)
-        np.minimum.at(ranges, k[ok], rr[ok])
+        if not self.robust:
+            np.minimum.at(ranges, k[ok], rr[ok])
+            return ranges, angles
+        # robust per-beam range: the minimum of n noisy returns is biased
+        # short by about sigma*sqrt(2 ln n); the median of the three nearest
+        # returns is not (one return: that return; two: their mean)
+        kk, rv = k[ok], rr[ok]
+        order = np.lexsort((rv, kk))
+        kk, rv = kk[order], rv[order]
+        first = np.r_[0, np.flatnonzero(np.diff(kk)) + 1]
+        cnt = np.diff(np.r_[first, len(kk)])
+        est = np.where(cnt >= 3, rv[np.minimum(first + 1, len(rv) - 1)],
+                       np.where(cnt == 2, 0.5 * (rv[first] + rv[np.minimum(first + 1, len(rv) - 1)]),
+                                rv[first]))
+        ranges[kk[first]] = est
         return ranges, angles
 
 

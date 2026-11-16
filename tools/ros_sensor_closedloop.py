@@ -61,7 +61,8 @@ def mission(algo, gsrc, seed, sigma, world_sdf, contract, max_steps):
     stub.BUS.clear(), stub.QUEUE.clear(), stub.PARAMS.clear()
     stub.PARAMS.update(world_sdf=world_sdf, contract=contract, kin=False, lockstep=False,
                        payload="virtual", algo=algo, gate_source=gsrc, seed=seed,
-                       hold_err=0.0, use_scans=True, traffic_phase=True, sense_sigma0=max(sigma, 0.02))
+                       hold_err=0.0, use_scans=True, traffic_phase=True,
+                       sense_sigma0=max(sigma, 0.02))
     node = FormationController()
     S, F = node.S, node.F
     world, movers, r = S["world"], S["movers"], S["P"]["robot_radius"]
@@ -104,7 +105,7 @@ def mission(algo, gsrc, seed, sigma, world_sdf, contract, max_steps):
         min_gap = min(min_gap, d - r)
         contact += int(d <= r)
         contact_s += int(d_s <= r)
-    return dict(algo=algo, gate_source=gsrc, seed=seed, sigma=sigma,
+    return dict(algo=algo, gate_source=gsrc, seed=seed, sigma=sigma, version=2,
                 reached=bool(node.ctrl.reached_all), sim_time=round(node.t, 1),
                 steps=k + 1, contact_steps=contact, contact_steps_static=contact_s,
                 min_gap=round(min_gap, 3), traffic_phase=True,
@@ -133,8 +134,10 @@ def main():
         rows.append(R)
     out = os.path.join(ROOT, "results", "ros_sensor_closedloop.json")
     prev = json.load(open(out)) if os.path.exists(out) else []
-    keep = [p for p in prev if (p["algo"], p["gate_source"], p["seed"], p["sigma"], p.get("world"))
-            not in {(r["algo"], r["gate_source"], r["seed"], r["sigma"], a.world) for r in rows}]
+    key = lambda r, w: (r["algo"], r["gate_source"], r["seed"], r["sigma"], w,
+                        r.get("version", 1))
+    new = {key(r, a.world) for r in rows}
+    keep = [p for p in prev if key(p, p.get("world")) not in new]
     for r in rows:
         r["world"] = a.world
     json.dump(keep + rows, open(out, "w"), indent=1)

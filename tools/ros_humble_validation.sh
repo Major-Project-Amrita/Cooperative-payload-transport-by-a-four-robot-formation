@@ -3,7 +3,7 @@
 # DAgger policy and MPC: plant node + controller node as two ROS 2 processes,
 # each compared with the in-process run. Run on a machine with ROS 2 Humble.
 #   bash tools/ros_humble_validation.sh 2>&1 | tee results/ros_humble_validation.log
-set -u
+
 cd "$(dirname "$0")/.."
 for cfg in "mpc on_top false false truth" "nn on_top false false truth" \
            "pavfh on_top false false truth" "pavfh_nonn on_top false false truth" \

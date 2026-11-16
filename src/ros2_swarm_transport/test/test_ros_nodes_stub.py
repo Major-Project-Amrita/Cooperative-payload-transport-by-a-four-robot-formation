@@ -10,17 +10,18 @@ import pytest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOLS = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(HERE))), "tools")
-if not os.path.exists(os.path.join(TOOLS, "ros_lockstep_stub.py")):
-    pytest.skip("tools/ not present", allow_module_level=True)
 try:
     import rclpy  # noqa: F401
-    pytest.skip("real rclpy installed: use tools/ros_lockstep_test.sh", allow_module_level=True)
+    HAVE_RCLPY = True
 except ImportError:
-    pass
-sys.path.insert(0, TOOLS)
-import ros_lockstep_stub as stub  # noqa: E402
-
-stub.install_stub()
+    HAVE_RCLPY = False
+USABLE = os.path.exists(os.path.join(TOOLS, "ros_lockstep_stub.py")) and not HAVE_RCLPY
+# with real rclpy, tools/ros_humble_full.sh runs these checks over DDS instead
+pytestmark = pytest.mark.skipif(not USABLE, reason="real rclpy installed or tools/ absent")
+if USABLE:
+    sys.path.insert(0, TOOLS)
+    import ros_lockstep_stub as stub  # noqa: E402
+    stub.install_stub()
 
 
 @pytest.mark.skipif(not os.path.exists(os.path.join(os.path.dirname(HERE), "models",

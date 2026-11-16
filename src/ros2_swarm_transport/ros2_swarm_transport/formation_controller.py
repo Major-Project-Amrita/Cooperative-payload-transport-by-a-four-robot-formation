@@ -174,7 +174,11 @@ class FormationController(Node):
             raise ValueError(
                 f"use_scans needs a sensor-only configuration (algo pavfh|pavfh_nonn, "
                 f"gate_source sensor|learned); got algo={algo}, gate_source={gsrc}")
+        # self-filter widens with range noise: team-mate returns scatter by
+        # about 3 sigma beyond the robot's radius
+        sig0 = float(self.S.get('sigma0', 0.02))
         self.cloud = PointCloudScan(robot_radius=self.S['P']['robot_radius'],
+                                    self_margin=0.10 + 3.0 * sig0,
                                     max_age=float(p('scan_max_age')))
         self.mount = tuple(float(x) for x in p('scan_mount'))
         self.scans = {n: None for n in self.robots}

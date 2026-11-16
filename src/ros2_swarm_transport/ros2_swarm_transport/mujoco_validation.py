@@ -642,6 +642,8 @@ def main(argv=None):
                     help="formations x payload modes for --algo")
     ap.add_argument("--output", default=None)
     ap.add_argument("--phase", action="store_true", help="randomised traffic phase")
+    ap.add_argument("--gate-margin", type=float, default=0.0,
+                    help="extra clearance (m) the gate demands (physical safety margin)")
     ap.add_argument("--gate-source", default="truth",
                     choices=["truth", "audit", "sensor", "learned"])
     a = ap.parse_args(argv)
@@ -653,13 +655,14 @@ def main(argv=None):
     for formation, spacing, payload in jobs:
         name = (f"{a.algo}_{formation}_{payload}_s{a.seed}" + ("_nokin" if a.no_kin else "")
                 + ("_ph1" if a.phase else "")
-                + ("" if a.gate_source == "truth" else f"_{a.gate_source}"))
+                + ("" if a.gate_source == "truth" else f"_{a.gate_source}")
+                + (f"_m{a.gate_margin:g}" if a.gate_margin else ""))
         S = run(a.world, a.contract, algo=a.algo, formation=formation,
                 spacing=spacing, payload=payload, seed=a.seed, sigma0=a.sigma0,
                 kin=not a.no_kin, out_dir=out, name=name,
                 hold_err=0.0 if a.no_hold else 0.6, gui=a.gui,
                 video=os.path.join(out, name + ".mp4") if a.video else None,
-                phase=a.phase, gate_source=a.gate_source)
+                phase=a.phase, gate_source=a.gate_source, gate_margin=a.gate_margin)
         ok &= S["reached_goal"]
     return 0 if ok else 1
 

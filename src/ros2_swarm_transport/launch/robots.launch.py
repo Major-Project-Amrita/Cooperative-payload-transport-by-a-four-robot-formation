@@ -31,7 +31,8 @@ def generate_launch_description():
             ('world_sdf', ''), ('contract', ''), ('scan_topic', 'scan'),
             ('scan_max_age', '0.5'), ('sense_sigma0', '0.02'), ('hold_err', '0.6'),
             ('kin', 'true'), ('watchdog_timeout', '0.5'), ('max_v', '0.6'),
-            ('max_w', '1.0')]
+            ('max_w', '1.0'), ('seed', '1'), ('traffic_phase', 'false'),
+            ('gate_margin', '0.0')]
     ctrl = Node(package='ros2_swarm_transport', executable='formation_controller',
                 output='screen', parameters=[{
                     'lockstep': False, 'use_scans': True,
@@ -47,6 +48,9 @@ def generate_launch_description():
                     'kin': PV(LC('kin'), value_type=bool),
                     'watchdog_timeout': PV(LC('watchdog_timeout'), value_type=float),
                     'max_v': PV(LC('max_v'), value_type=float),
-                    'max_w': PV(LC('max_w'), value_type=float)}])
+                    'max_w': PV(LC('max_w'), value_type=float),
+                    'seed': PV(LC('seed'), value_type=int),
+                    'traffic_phase': PV(LC('traffic_phase'), value_type=bool),
+                    'gate_margin': PV(LC('gate_margin'), value_type=float)}])
     return LaunchDescription([DeclareLaunchArgument(k, default_value=v) for k, v in args]
                              + [ctrl])

@@ -14,6 +14,80 @@ rows of R3/R4).
 > venues and author lists against the papers. Unmarked entries are
 > established references.
 
+## 0. In plain terms: the neural networks, the gaps they address, and what they change
+
+The project uses three small neural networks. Each is evaluated against a
+non-learned version of the same thing, and the numbers below come from the
+result files.
+
+### 0.1 Inside the proposed algorithm: the PA-VFH occupancy network
+
+**What it is.** A circular 1-D convolutional network of about 11,000
+parameters.
+- **Input:** the last three filtered lidar scans, grouped into 72 bearing
+  sectors, plus each sector's range uncertainty, which sectors were
+  observed, and how fast the formation is closing on each sector.
+- **Output:** a danger value per sector for the **next 0.5 s**.
+- **Runtime:** numpy only, well under a millisecond per step, no GPU.
+- **Training target:** what an oracle that knows where every shuttle will
+  be computes. The labels come from the simulator. At run time the network
+  sees only scans.
+
+**Where it sits.** It replaces one block of a classical pipeline: the
+analytic danger kernel. Everything after it stays classical and auditable:
+- the VFH+ histogram;
+- valley selection;
+- the anti-deadlock layer;
+- the safety gate that checks every move.
+
+**Industry gaps it addresses:**
+- **Prediction without a traffic plan.** The former proposal (PA-VFH-K,
+  "P-VFH") read the movers' future from the traffic contract. Warehouses
+  rarely publish that to robots in real time. PA-VFH infers motion from
+  scan history alone.
+- **Learned components that do not have to be trusted blindly.** End-to-end
+  learned planners are hard to certify. Here the network only re-weights
+  sectors, and the classical decision layer and the safety gate stay in
+  charge. If the network is wrong, the gate still blocks unsafe poses.
+- **Cheap and team-size independent.** The network sees the formation's
+  scan, not individual robots. It runs unchanged for 3, 4, 6 or 9 robots
+  and costs about a third of MPC's compute per step.
+
+**How it changes the algorithm (measured):**
+
+| Measure | With the network | Without (the identical pipeline with the analytic kernel) |
+|---|---|---|
+| Missions completed (E19, 90 paired missions) | 90 / 90 | 89 / 90 |
+| Gate-rejected steps per mission | about half: −19 [−58, +1] paired | – |
+| Blocked/free agreement with the oracle (S3) | 98.2 % | 98.0 % |
+| Blocked sectors missed | 8.0 % | 8.3 % |
+
+These gains are **consistent but not statistically significant** at this
+sample size. The network also has a start-up transient before it has three
+scans of history (S3). PA-VFH as a whole had the highest reach of the five
+laws in E19 and the cheapest compute. MPC is faster on average.
+
+### 0.2 A learned steering policy (DAgger imitation of MPC)
+
+A team-size-agnostic policy: a circular CNN over the scan plus a DeepSets
+encoder over the robot slots.
+- **Gap:** learned swarm policies are usually tested on point robots. Here
+  the team is one rigid body whose footprint changes with team size.
+- **Result:** it matches its MPC teacher on held-out worlds and on the
+  unseen 9-robot team at about 2.5 × less compute. In physics it was clean
+  in 26 of 30 runs (P1).
+
+### 0.3 A learned safety monitor with a conformal bound
+
+The network estimates clearance from scans. A split-conformal margin turns
+that estimate into an admit/reject decision with a stated error rate.
+- **Gap:** learned safety layers rarely state, or measure, their
+  false-accept rate.
+- **Result:** in distribution, it admitted unsafe poses at the calibrated
+  rate. On the fused per-robot scans of the ROS 2 real-sensor mode it
+  admitted more (ROS2_VALIDATION §2), so it must be re-calibrated for each
+  sensor setup. That is a limit we report, not hide.
+
 ## 1. Recent advances
 
 ### 1.1 Learned multi-robot navigation and swarm control

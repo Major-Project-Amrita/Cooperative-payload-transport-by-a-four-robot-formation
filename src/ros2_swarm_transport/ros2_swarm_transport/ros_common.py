@@ -31,6 +31,7 @@ def declare_mission_params(node):
     d('traffic_phase', False)          # randomised mover phase keyed on seed
     d('gate_source', 'truth')          # truth | audit | sensor | learned
     d('mon_alpha', 0.05)               # conformal level of the learned monitor
+    d('gate_margin', 0.0)              # extra clearance demanded by the gate (m)
 
 
 def _find(path):
@@ -63,7 +64,8 @@ def mission_setup(node, video=None, gui=False):
                  kin=bool(p('kin')), video=video, timesteps=int(p('timesteps')),
                  gate=str(p('gate')), hold_err=float(p('hold_err')), gui=gui,
                  phase=bool(p('traffic_phase')), gate_source=str(p('gate_source')),
-                 mon_alpha=float(p('mon_alpha')))
+                 mon_alpha=float(p('mon_alpha')),
+                 gate_margin=float(p('gate_margin')))
 
 
 class PlantProxy:

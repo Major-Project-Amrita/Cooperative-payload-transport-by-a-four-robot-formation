@@ -1,0 +1,17 @@
+{
+ "s3": {
+  "mae_network": 0.022091826759070732,
+  "mae_analytic": 0.01180601154239787,
+  "agree_network": 0.9817061428846524,
+  "agree_analytic": 0.9803100327363758,
+  "missed_block_network": 0.07975580937376921,
+  "missed_block_analytic": 0.08251280031508468,
+  "false_block_network": 0.009735095705588767,
+  "false_block_analytic": 0.010941699116985686,
+  "steps": 577
+ },
+ "s5": {
+  "max_diff": 0.0,
+  "steps": 1010
+ }
+}
