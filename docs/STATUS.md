@@ -1,3 +1,37 @@
+# Status — 16 November 2026
+
+## Review response: state of the six steps
+
+| Step | State | Evidence |
+|---|---|---|
+| 1. Correct the MATLAB collision gate; regenerate grid, cross-stack, figures, tables | **Done** | Box and mover corners are in cyclic order (`matlab_ref/formation_clearance_dyn.m`). Zero noise: MATLAB and Python agree to 7e-7 m for every law. Noisy grid (2,730 runs): **221/221** cells agree, with no static contact in either stack (`results/CROSS_STACK_fixedgate.md`, T1c in `RESULTS_TABLES.md`, R1 in `EXTENDED_RESULTS.md`). |
+| 2. Randomise traffic phase; report reach, contact and clearance intervals | **Done** | Every extended, physics and tuning run uses the per-seed random phase, with Wilson and bootstrap 95 % intervals (R2–R9). |
+| 3. More physics replication, robot-parameter sweep, every run listed | **Done** | P1: 6 laws × 3 payload modes × 10 seeds. P2: 8 robot variants × 5 seeds. Every run is listed in R8. |
+| 4. Fair tuning of the baselines, a standard planner, related work | **Done** | Equal-budget tuning for 7 laws, evaluated on held-out worlds (R6); MPPI added; `RELATED_WORK.md`. |
+| 5. Separate ground-truth screening from a deployable monitor | **Done** | Audit, sensor and learned-conformal monitors (R5). ROS 2 real-sensor mode from LaserScans (`ROS2_VALIDATION.md`). Claim limits are in `PAPER_FRAMING.md`. |
+| 6. Release with archive and DOI; revised title and abstract | **Archive built; DOI pending** | Run `python3 tools/make_release.py --version 1.0.0` to get `dist/*.tar.gz` and `MANIFEST.sha256`. Minting the DOI needs the authors, a LICENSE file and the Zenodo switch (`RELEASE.md`). Title and abstract: `PAPER_FRAMING.md`, `CITATION.cff`. |
+| Neural networks | **Done** | PA-VFH, the proposed algorithm (learned occupancy inside VFH+; ablation in R9); DAgger policy; conformal learned monitor (`NEURAL.md`, `PA_VFH.md`). |
+| ROS 2 | **Node code verified; real-DDS run of the neural laws pending** | `ROS2_VALIDATION.md`. On a Humble machine, run `bash tools/ros_humble_validation.sh`. |
+
+## Open before submission
+
+- Authors, affiliation, ORCIDs, and the expansion of "PA" in PA-VFH.
+- LICENSE file (MIT is declared in `package.xml`).
+- The real-ROS 2 run of the neural laws (`tools/ros_humble_validation.sh`).
+
+## Open before hardware
+
+See `ROS2_VALIDATION.md` §4:
+- noise robustness above σ0 = 0.05 m;
+- the physics clearance margin of PA-VFH;
+- an emergency-stop watchdog;
+- localisation;
+- people.
+
+---
+
+*The status record of 3 October 2026 follows unchanged.*
+
 # Status — 3 October 2026, 04:00
 
 > **Nomenclature (Nov 2026):** the proposed algorithm is now **PA-VFH** (neural predictive occupancy inside the VFH+ pipeline; see [PA_VFH.md](PA_VFH.md)). The algorithm this document called "P-VFH" (code key `pvfh_prob`) is renamed **PA-VFH-K** throughout; its data and run names are unchanged.

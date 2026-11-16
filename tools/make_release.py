@@ -32,9 +32,14 @@ CORE = ["README.md", "CITATION.cff", ".zenodo.json", "docs", "tools",
         "results/warehouse_mover_timing.csv", "results/warehouse_xcheck.csv",
         "results/mujoco_summary.csv", "results/mujoco_phase_summary.csv",
         "results/extended", "results/tuning", "results/figures", "results/figures_ext",
-        "results/generated", "results/generated_matlabscript", "results/RESULTS_LOG_headless.md"]
+        "results/generated", "results/generated_matlabscript", "results/RESULTS_LOG_headless.md",
+        "results/ros_sensor_closedloop.json", "results/mujoco_ros_stub/summary.json",
+        "results/mujoco_ros_stub/summary_learned_phase.json",
+        "results/mujoco_ros_stub/stub_truth.log", "results/xcheck_fixedgate",
+        "results/CROSS_STACK_fixedgate.md", "results/cross_stack_fixedgate.csv"]
 RUNS = ["results/runs", "results/runs_exactgate", "results/xcheck", "results/mujoco",
-        "results/mujoco_phase", "results/mujoco_ros", "matlab_ref/logs/paper/runs"]
+        "results/mujoco_phase", "results/mujoco_ros", "results/mujoco_ros_stub",
+        "matlab_ref/logs/paper/runs"]
 SKIP_DIRS = {"__pycache__", ".git", "build", "install", "log"}
 SKIP_IN_CORE = {"matlab_ref/logs/paper/runs"}
 
