@@ -80,6 +80,7 @@ def mission(algo, gsrc, seed, sigma, world_sdf, contract, max_steps):
         mk = [m.eval_at(t) for m in movers]
         for i, n in enumerate(node.robots):
             node.pos[n], node.yaw[n] = pos[i].copy(), float(yaw[i])
+            node.last_odom[n] = node.now()           # odometry just arrived
         for i, n in enumerate(node.robots):
             rr, ang = robot_scan(i, pos, world, mk, r, sigma=sigma, rng=rng)
             m = stub.Msg()

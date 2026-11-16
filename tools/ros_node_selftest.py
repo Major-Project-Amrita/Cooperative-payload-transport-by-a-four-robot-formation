@@ -24,6 +24,7 @@ n.cmd = lambda name, v, w: cmds.__setitem__(name, (v, w))
 for k in range(4000):
     for i, r in enumerate(n.robots):
         n.pos[r], n.yaw[r] = pos[i].copy(), float(yaw[i])
+        n.last_odom[r] = n.now()
     n.step()
     for i, r in enumerate(n.robots):
         v, w = cmds[r]

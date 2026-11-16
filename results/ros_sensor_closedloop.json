@@ -71,29 +71,6 @@
  {
   "algo": "pavfh",
   "gate_source": "sensor",
-  "seed": 4,
-  "sigma": 0.02,
-  "reached": true,
-  "sim_time": 76.5,
-  "steps": 765,
-  "contact_steps": 14,
-  "contact_steps_static": 0,
-  "min_gap": -0.467,
-  "traffic_phase": true,
-  "gate_stats": {
-   "checks": 605,
-   "accept": 531,
-   "reject": 74,
-   "false_accept": 0,
-   "false_reject": 74
-  },
-  "cloud_points": 1176,
-  "self_filtered": 192,
-  "world": "swarm_world_dynamic.sdf"
- },
- {
-  "algo": "pavfh",
-  "gate_source": "sensor",
   "seed": 5,
   "sigma": 0.02,
   "reached": false,
@@ -1102,5 +1079,28 @@
   "cloud_points": 1207,
   "self_filtered": 192,
   "world": "swarm_world_awswh.sdf"
+ },
+ {
+  "algo": "pavfh",
+  "gate_source": "sensor",
+  "seed": 4,
+  "sigma": 0.02,
+  "reached": true,
+  "sim_time": 76.5,
+  "steps": 765,
+  "contact_steps": 14,
+  "contact_steps_static": 0,
+  "min_gap": -0.467,
+  "traffic_phase": true,
+  "gate_stats": {
+   "checks": 605,
+   "accept": 531,
+   "reject": 74,
+   "false_accept": 0,
+   "false_reject": 74
+  },
+  "cloud_points": 1176,
+  "self_filtered": 192,
+  "world": "swarm_world_dynamic.sdf"
  }
 ]

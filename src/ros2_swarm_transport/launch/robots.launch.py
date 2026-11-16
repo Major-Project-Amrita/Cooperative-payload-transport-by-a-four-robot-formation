@@ -7,7 +7,8 @@ LaserScans, the proposed PA-VFH steering and a sensor-based safety monitor.
 
 Topics per robot <r> in `robots` (default robot1..robot4):
     subscribes /<r>/odom (nav_msgs/Odometry, map frame), /<r>/scan (sensor_msgs/LaserScan)
-    publishes  /<r>/cmd_vel (geometry_msgs/Twist), /swarm/phase (std_msgs/Int32)
+    publishes  /<r>/cmd_vel (geometry_msgs/Twist), /swarm/phase (std_msgs/Int32),
+               /swarm/safety (std_msgs/Int32: 1 = watchdog stop on stale odom/scan)
 
 world_sdf supplies the STATIC map used for formation planning and the
 route; contract supplies the start, waypoints and goal (its mover list may
@@ -29,7 +30,8 @@ def generate_launch_description():
             ('formation', 'square'), ('grid_spacing', '1.18'), ('payload', 'on_top'),
             ('world_sdf', ''), ('contract', ''), ('scan_topic', 'scan'),
             ('scan_max_age', '0.5'), ('sense_sigma0', '0.02'), ('hold_err', '0.6'),
-            ('kin', 'true')]
+            ('kin', 'true'), ('watchdog_timeout', '0.5'), ('max_v', '0.6'),
+            ('max_w', '1.0')]
     ctrl = Node(package='ros2_swarm_transport', executable='formation_controller',
                 output='screen', parameters=[{
                     'lockstep': False, 'use_scans': True,
@@ -42,6 +44,9 @@ def generate_launch_description():
                     'scan_max_age': PV(LC('scan_max_age'), value_type=float),
                     'sense_sigma0': PV(LC('sense_sigma0'), value_type=float),
                     'hold_err': PV(LC('hold_err'), value_type=float),
-                    'kin': PV(LC('kin'), value_type=bool)}])
+                    'kin': PV(LC('kin'), value_type=bool),
+                    'watchdog_timeout': PV(LC('watchdog_timeout'), value_type=float),
+                    'max_v': PV(LC('max_v'), value_type=float),
+                    'max_w': PV(LC('max_w'), value_type=float)}])
     return LaunchDescription([DeclareLaunchArgument(k, default_value=v) for k, v in args]
                              + [ctrl])

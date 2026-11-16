@@ -423,7 +423,7 @@ def setup(world_sdf=None, contract=None, mjcf=None, algo="pvfh_prob",
           formation="square", spacing=1.18, payload="on_top", seed=1,
           sigma0=0.02, kin=True, video=None, timesteps=3000, gate="exact",
           hold_err=0.6, gui=False, phase=False, robot=None, gate_source="truth",
-          mon_alpha=0.05):
+          mon_alpha=0.05, gate_margin=0.0):
     """Build the scenario, the controller and the plant (shared by run() and
     the ROS 2 nodes). phase: randomised traffic phase keyed on the seed;
     robot: overrides of ROBOT (chassis_mass, v_wheel_max, wheel_friction,
@@ -446,7 +446,7 @@ def setup(world_sdf=None, contract=None, mjcf=None, algo="pvfh_prob",
         waypoints = np.array([world.goal], dtype=float)
     start = np.asarray(meta.get("start", [-12.0, 0.0]), dtype=float)
     P = make_params(kin=kin, timesteps=timesteps, gate=gate, gate_source=gate_source,
-                    mon_alpha=mon_alpha, mon_seed=seed)
+                    mon_alpha=mon_alpha, mon_seed=seed, gate_margin=gate_margin)
     rng = np.random.default_rng(seed)
     cfg = VfhConfig(sense={"kind": "lidar", "sigma0": sigma0})
     F = plan_formation(formation, spacing, start, waypoints[0],
@@ -455,7 +455,7 @@ def setup(world_sdf=None, contract=None, mjcf=None, algo="pvfh_prob",
              F=F, world_sdf=world_sdf, mjcf=mjcf, formation=formation,
              spacing=spacing, payload=payload, algo=algo, seed=seed,
              sigma0=sigma0, kin=kin, hold_err=hold_err, video=video,
-             phase=bool(phase), robot=dict(ROBOT), gate_source=gate_source,
+             phase=bool(phase), robot=dict(ROBOT), gate_source=gate_source, gate_margin=gate_margin,
              t0_offset=("" if t0_offset is None else
                         ";".join(f"{x:.3f}" for x in t0_offset)))
     S["make_controller"] = lambda: MissionController(
@@ -554,6 +554,7 @@ class MissionLog:
             wall_s=wall_s, world=os.path.basename(S0["world_sdf"]),
             phase=S0.get("phase", False), t0_offset=S0.get("t0_offset", ""),
             gate_source=S0.get("gate_source", "truth"),
+            gate_margin=S0.get("gate_margin", 0.0),
             gate_stats=_gate_stats(ctrl.leader),
             **{f"robot_{k}": v for k, v in S0.get("robot", {}).items()})
         os.makedirs(out_dir, exist_ok=True)
@@ -579,14 +580,15 @@ def run(world_sdf=None, contract=None, mjcf=None, algo="pvfh_prob",
         formation="square", spacing=1.18, payload="on_top", seed=1,
         sigma0=0.02, kin=True, video=None, out_dir=None, name=None,
         timesteps=3000, verbose=True, gate="exact", hold_err=0.6, gui=False,
-        phase=False, robot=None, gate_source="truth", mon_alpha=0.05):
+        phase=False, robot=None, gate_source="truth", mon_alpha=0.05,
+        gate_margin=0.0):
     """One physics mission, controller and plant in one process. Returns the
     summary dict (also written as JSON)."""
     out_dir = out_dir or os.path.join(ROOT, "results", "mujoco")
     name = name or f"{algo}_{formation}_{payload}_s{seed}"
     S = setup(world_sdf, contract, mjcf, algo, formation, spacing, payload, seed,
               sigma0, kin, video, timesteps, gate, hold_err, gui, phase, robot,
-              gate_source, mon_alpha)
+              gate_source, mon_alpha, gate_margin)
     ctrl, plant = S["make_controller"](), S["make_plant"]()
     log = MissionLog(S)
     t_wall = time.perf_counter()

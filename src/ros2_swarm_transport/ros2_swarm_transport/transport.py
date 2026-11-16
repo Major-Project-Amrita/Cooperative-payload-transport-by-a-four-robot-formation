@@ -39,6 +39,10 @@ DEFAULTS = dict(
     stuck_escape_steps=5, escape_step=0.4, eps=1e-6, blend_fade=True,
     collision_mode="payload",
     gate="exact",          # "matlab" = bug-compatible SAT (see geometry.py)
+    # extra clearance (m) the ground-truth gate demands beyond the robot
+    # radius: a deployment safety margin that absorbs tracking error on real
+    # (or physically simulated) robots. 0 = the kinematic benchmark.
+    gate_margin=0.0,
     # who decides the pose commit (safety_monitor.py):
     #   "truth"  ground-truth screen decides (the reference behaviour)
     #   "audit"  truth decides, the sensor monitor is scored in the shadow
@@ -341,8 +345,8 @@ class TransportLeader:
     def _safe(self, pos, heading, sim_t, mt):
         P = self.P
         truth = step_safe(pos, heading, self.world, self.movers, sim_t, P["dt"],
-                          P["robot_radius"], P["collision_mode"], self.offsets,
-                          mt, P["gate"])
+                          P["robot_radius"] + P["gate_margin"], P["collision_mode"],
+                          self.offsets, mt, P["gate"])
         if self.monitor is None:
             return truth
         if P["mon_record"] is not None:

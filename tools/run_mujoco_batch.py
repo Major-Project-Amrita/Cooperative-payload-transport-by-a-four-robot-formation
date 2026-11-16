@@ -12,6 +12,9 @@
       wheel speed limit, wheel friction, payload mass, wheel force limit),
       MPC and PA-VFH-K, carried plate, seeds 1-5, randomised phase
       (the planner keeps its nominal model: this measures model mismatch)
+  P3  = P1 with a 0.10 m physical safety margin in the gate (gate_margin),
+      the SAME margin for every law
+  P4  = P2 with the same 0.10 m margin, all six P1 laws
 
     python3 tools/run_mujoco_batch.py            # everything (~1 h, 1 core)
     python3 tools/run_mujoco_batch.py --videos   # + the showcase videos
@@ -38,7 +41,8 @@ def _run_job(t):
         mv.run(algo=j["algo"], formation=j["formation"], spacing=j["spacing"],
                payload=j["payload"], seed=j["seed"], kin=j["kin"], out_dir=out,
                hold_err=j["hold"], phase=j["phase"], robot=j["robot"],
-               name=j["name"], video=vid, verbose=False, **kw)
+               name=j["name"], video=vid, verbose=False,
+               gate_margin=j.get("gate_margin", 0.0), **kw)
     except Exception as e:                       # noqa: BLE001
         print(f"RUN FAILED {j['name']}: {type(e).__name__}: {e}", flush=True)
         with open(os.path.join(out, j["name"] + ".failed"), "w") as fh:
@@ -46,12 +50,12 @@ def _run_job(t):
 
 
 def add(tag, algo, formation, spacing, payload, seed=1, kin=True, world=None, video=False,
-        hold=0.6, phase=False, robot=None, rtag=""):
+        hold=0.6, phase=False, robot=None, rtag="", gate_margin=0.0):
     name = f"{tag}_{algo}_{formation}_{payload}_s{seed}" + ("" if kin else "_nokin") \
         + ("" if hold else "_nohold") + (f"_{rtag}" if rtag else "")
     J.append(dict(name=name, algo=algo, formation=formation, spacing=spacing,
                   payload=payload, seed=seed, kin=kin, world=world, video=video, tag=tag,
-                  hold=hold, phase=phase, robot=robot or {}))
+                  hold=hold, phase=phase, robot=robot or {}, gate_margin=gate_margin))
 
 for a in ("mpc", "dwa", "pvfh_prob", "pvfh", "vfh"):
     for p in ("virtual", "on_top", "behind"):
@@ -84,6 +88,16 @@ for a in ("mpc", "pvfh_prob", "pavfh"):                  # P2: robot sweep
     for rt, rb in SWEEP:
         for s in range(1, 6):
             add("P2", a, "square", 1.18, "on_top", seed=s, phase=True, robot=rb, rtag=rt)
+MARGIN = 0.10
+for a in ("mpc", "mppi", "dwa", "pvfh_prob", "nn", "pavfh"):     # P3: P1 + margin
+    for p in ("virtual", "on_top", "behind"):
+        for s in range(1, 11):
+            add("P3", a, "square", 1.18, p, seed=s, phase=True, gate_margin=MARGIN)
+for a in ("mpc", "mppi", "dwa", "pvfh_prob", "nn", "pavfh"):     # P4: P2 + margin
+    for rt, rb in SWEEP:
+        for s in range(1, 6):
+            add("P4", a, "square", 1.18, "on_top", seed=s, phase=True, robot=rb, rtag=rt,
+                gate_margin=MARGIN)
 
 
 if __name__ == "__main__":
@@ -116,6 +130,6 @@ if __name__ == "__main__":
             mv.run(algo=j["algo"], formation=j["formation"], spacing=j["spacing"],
                    payload=j["payload"], seed=j["seed"], kin=j["kin"], out_dir=out,
                    hold_err=j["hold"], phase=j["phase"], robot=j["robot"],
-                   name=j["name"], video=vid, **kw)
+                   name=j["name"], video=vid, gate_margin=j.get("gate_margin", 0.0), **kw)
         except Exception as e:                       # noqa: BLE001
             print(f"RUN FAILED {j['name']}: {type(e).__name__}: {e}", flush=True)

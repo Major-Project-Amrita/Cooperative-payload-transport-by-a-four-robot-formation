@@ -33,6 +33,13 @@ Two ways to feed it:
 
 In both modes it publishes /<robot>/cmd_vel (geometry_msgs/Twist) and
 /swarm/phase (std_msgs/Int32: 1 forming/docking, 2 transport, 3 done).
+
+Safety watchdog (free-running mode): if any robot's odometry, or with
+use_scans any robot's scan, is older than watchdog_timeout seconds, every
+robot is commanded to stop and /swarm/safety (std_msgs/Int32) reads 1 until
+fresh data arrive (0 = nominal). Every command is clamped to |v| <= max_v,
+|w| <= max_w, and zero velocity is sent to every robot on shutdown. The
+watchdog complements, and does not replace, a hardware emergency stop.
 """
 
 import math
@@ -65,6 +72,9 @@ class FormationController(Node):
         self.declare_parameter('scan_topic', 'scan')            # /<robot>/<scan_topic>
         self.declare_parameter('scan_mount', [0.0, 0.0, 0.0])   # sensor x, y, yaw in base frame
         self.declare_parameter('scan_max_age', 0.5)             # s; older -> stop
+        self.declare_parameter('watchdog_timeout', 0.5)         # s; stale odom/scan -> stop
+        self.declare_parameter('max_v', 1.0)                    # m/s, hard clamp
+        self.declare_parameter('max_w', 2.0)                    # rad/s, hard clamp
         p = lambda n: self.get_parameter(n).value
         self.S = mission_setup(self)
         self.ctrl = self.S['make_controller']()
@@ -73,6 +83,14 @@ class FormationController(Node):
         self.robots = list(p('robots'))[:self.ctrl.K]
         self.t = 0.0
         self.log = None
+        self.now = time.monotonic                    # replaceable clock (tests)
+        self.wd_timeout = float(p('watchdog_timeout'))
+        self.max_v, self.max_w = float(p('max_v')), float(p('max_w'))
+        self.last_odom = {n: -math.inf for n in self.robots}
+        self.last_scan = {n: -math.inf for n in self.robots}
+        self.n_watchdog = 0
+        self.safety_state = 0
+        self.pub_safety = self.create_publisher(Int32, '/swarm/safety', 10)
         self.t_wall = time.perf_counter()
         self.pos = {n: None for n in self.robots}
         self.yaw = {n: 0.0 for n in self.robots}
@@ -106,7 +124,9 @@ class FormationController(Node):
     # ---- shared ----
     def cmd(self, name, v, w):
         tw = Twist()
-        tw.linear.x, tw.angular.z = float(v), float(w)
+        v = max(-self.max_v, min(self.max_v, float(v)))
+        w = max(-self.max_w, min(self.max_w, float(w)))
+        tw.linear.x, tw.angular.z = v, w
         self.cmd_pub[name].publish(tw)
 
     def _publish(self, out):
@@ -123,7 +143,28 @@ class FormationController(Node):
             self.pos[name] = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y])
             self.yaw[name] = math.atan2(2.0 * (q.w * q.z + q.x * q.y),
                                         1.0 - 2.0 * (q.y * q.y + q.z * q.z))
+            self.last_odom[name] = self.now()
         return cb
+
+    def stop_all(self):
+        for n in self.robots:
+            self.cmd(n, 0.0, 0.0)
+
+    def _set_safety(self, state):
+        if state != self.safety_state:
+            self.get_logger().info('watchdog: stale sensor data -> all robots stopped'
+                                   if state else 'watchdog: data fresh again -> resuming')
+        self.safety_state = state
+        m = Int32()
+        m.data = int(state)
+        self.pub_safety.publish(m)
+
+    def _stale(self):
+        now = self.now()
+        if any(now - self.last_odom[n] > self.wd_timeout for n in self.robots):
+            return True
+        return self.scans is not None and any(
+            now - self.last_scan[n] > self.wd_timeout for n in self.robots)
 
     def _setup_scans(self, p, qos):
         from sensor_msgs.msg import LaserScan
@@ -153,6 +194,7 @@ class FormationController(Node):
             self.scans[name] = laserscan_to_points(
                 pose, msg.ranges, msg.angle_min, msg.angle_increment,
                 msg.range_min, msg.range_max, self.mount)
+            self.last_scan[name] = self.now()
         return cb
 
     def _update_cloud(self, pos):
@@ -169,7 +211,14 @@ class FormationController(Node):
 
     def step(self):
         if any(self.pos[n] is None for n in self.robots):
+            self.stop_all()
             return                                   # wait for all odometry
+        if self._stale():                            # watchdog: hold still
+            self.n_watchdog += 1
+            self.stop_all()
+            self._set_safety(1)
+            return
+        self._set_safety(0)
         pos = np.array([self.pos[n] for n in self.robots])
         yaw = np.array([self.yaw[n] for n in self.robots])
         if self.scans is not None and not self._update_cloud(pos):
@@ -230,6 +279,10 @@ def main():
     except (KeyboardInterrupt, SystemExit):
         pass
     finally:
+        try:
+            node.stop_all()                          # never leave robots moving
+        except Exception:                            # noqa: BLE001
+            pass
         node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()
