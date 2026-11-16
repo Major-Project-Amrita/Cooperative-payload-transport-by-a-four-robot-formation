@@ -1,0 +1,140 @@
+[
+ {
+  "algo": "pavfh",
+  "gate_source": "sensor",
+  "seed": 1,
+  "sigma": 0.02,
+  "reached": true,
+  "sim_time": 74.1,
+  "steps": 741,
+  "contact_steps": 59,
+  "contact_steps_static": 0,
+  "min_gap": -0.458,
+  "traffic_phase": true,
+  "gate_stats": {
+   "checks": 889,
+   "accept": 560,
+   "reject": 329,
+   "false_accept": 2,
+   "false_reject": 137
+  },
+  "cloud_points": 1182,
+  "self_filtered": 192,
+  "world": "swarm_world_dynamic.sdf"
+ },
+ {
+  "algo": "pavfh",
+  "gate_source": "sensor",
+  "seed": 2,
+  "sigma": 0.02,
+  "reached": true,
+  "sim_time": 62.1,
+  "steps": 621,
+  "contact_steps": 12,
+  "contact_steps_static": 0,
+  "min_gap": -0.177,
+  "traffic_phase": true,
+  "gate_stats": {
+   "checks": 668,
+   "accept": 496,
+   "reject": 172,
+   "false_accept": 0,
+   "false_reject": 84
+  },
+  "cloud_points": 1166,
+  "self_filtered": 192,
+  "world": "swarm_world_dynamic.sdf"
+ },
+ {
+  "algo": "pavfh",
+  "gate_source": "sensor",
+  "seed": 3,
+  "sigma": 0.02,
+  "reached": true,
+  "sim_time": 68.4,
+  "steps": 684,
+  "contact_steps": 63,
+  "contact_steps_static": 0,
+  "min_gap": -0.454,
+  "traffic_phase": true,
+  "gate_stats": {
+   "checks": 850,
+   "accept": 518,
+   "reject": 332,
+   "false_accept": 0,
+   "false_reject": 118
+  },
+  "cloud_points": 1164,
+  "self_filtered": 188,
+  "world": "swarm_world_dynamic.sdf"
+ },
+ {
+  "algo": "pavfh",
+  "gate_source": "sensor",
+  "seed": 4,
+  "sigma": 0.02,
+  "reached": true,
+  "sim_time": 76.5,
+  "steps": 765,
+  "contact_steps": 14,
+  "contact_steps_static": 0,
+  "min_gap": -0.467,
+  "traffic_phase": true,
+  "gate_stats": {
+   "checks": 605,
+   "accept": 531,
+   "reject": 74,
+   "false_accept": 0,
+   "false_reject": 74
+  },
+  "cloud_points": 1176,
+  "self_filtered": 192,
+  "world": "swarm_world_dynamic.sdf"
+ },
+ {
+  "algo": "pavfh",
+  "gate_source": "sensor",
+  "seed": 5,
+  "sigma": 0.02,
+  "reached": false,
+  "sim_time": 300.0,
+  "steps": 3000,
+  "contact_steps": 114,
+  "contact_steps_static": 0,
+  "min_gap": -0.504,
+  "traffic_phase": true,
+  "gate_stats": {
+   "checks": 598,
+   "accept": 378,
+   "reject": 220,
+   "false_accept": 0,
+   "false_reject": 195
+  },
+  "cloud_points": 1151,
+  "self_filtered": 190,
+  "world": "swarm_world_dynamic.sdf"
+ },
+ {
+  "algo": "pavfh",
+  "gate_source": "sensor",
+  "seed": 6,
+  "sigma": 0.02,
+  "reached": true,
+  "sim_time": 71.7,
+  "steps": 717,
+  "contact_steps": 35,
+  "contact_steps_static": 0,
+  "min_gap": -0.445,
+  "traffic_phase": true,
+  "gate_stats": {
+   "checks": 981,
+   "accept": 521,
+   "reject": 460,
+   "false_accept": 0,
+   "false_reject": 248
+  },
+  "cloud_points": 1165,
+  "self_filtered": 192,
+  "world": "swarm_world_dynamic.sdf"
+ }
+]
