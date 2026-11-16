@@ -10,4 +10,4 @@ ENV PIP_CERT=/etc/ssl/certs/ca-certificates.crt REQUESTS_CA_BUNDLE=/etc/ssl/cert
 RUN apt-get update && apt-get install -y --no-install-recommends python3-pip \
       ros-humble-visualization-msgs ros-humble-nav-msgs ros-humble-rosgraph-msgs \
       libgl1 libegl1 libosmesa6 && rm -rf /var/lib/apt/lists/*
-RUN pip3 install --no-cache-dir "numpy<2" scipy mujoco pytest
+RUN pip3 install --no-cache-dir "numpy<2" scipy mujoco pytest matplotlib

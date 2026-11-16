@@ -7,22 +7,39 @@
 # 3 lockstep ROS 2 vs in-process, 7 cases      6 watchdog: a robot's lidar fails mid-mission
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
+STAGES="${STAGES:-1 2 3 4 5 6}"       # e.g. STAGES="1 2 5 6" bash tools/ros_humble_full.sh
+want() { case " $STAGES " in *" $1 "*) return 0;; esac; return 1; }
+stop_launch() {                       # ros2 launch can ignore SIGINT in containers
+  kill -INT "$1" 2>/dev/null
+  for i in 1 2 3 4 5 6 7 8 9 10; do kill -0 "$1" 2>/dev/null || break; sleep 1; done
+  kill -KILL "$1" 2>/dev/null; pkill -KILL -f "lib/ros2_swarm_transport/formation_controller" 2>/dev/null
+  wait "$1" 2>/dev/null; sleep 1
+}
 OUT="$REPO/results/ros_humble"; mkdir -p "$OUT"
 source /opt/ros/humble/setup.bash
+if want 1 || want 4 || want 5 || want 6; then
 echo "=== 1. colcon build"
 WS=/tmp/swarm_ws; rm -rf $WS; mkdir -p $WS/src; ln -s "$REPO/src/ros2_swarm_transport" $WS/src/
 (cd $WS && colcon build --symlink-install --event-handlers console_cohesion- 2>&1 | tail -3)
 source $WS/install/setup.bash
 ros2 pkg executables ros2_swarm_transport
+fi
+if want 2; then
 echo "=== 2. test suite (Python $(python3 -c 'import sys;print(sys.version.split()[0])'), real rclpy)"
 (cd "$REPO/src/ros2_swarm_transport" && python3 -m pytest test -q -p no:cacheprovider 2>&1 | tail -3)
+fi
+if want 3; then
 echo "=== 3. lockstep: ROS 2 processes vs in-process"
 bash "$REPO/tools/ros_humble_validation.sh"
+fi
+if want 4; then
 echo "=== 4. ros2 launch (installed package): PA-VFH, random phase, learned monitor"
 timeout 900 ros2 launch ros2_swarm_transport mujoco_validation.launch.py algo:=pavfh \
     payload:=on_top traffic_phase:=true gate_source:=learned output_dir:=$OUT \
     run_name:=launch_pavfh_on_top_learned 2>&1 | grep -E "mission|formed|plant up" | tail -4
 python3 -c "import json;d=json.load(open('$OUT/launch_pavfh_on_top_learned.json'));print({k:d[k] for k in ('reached_goal','total_time','contact_steps_static','contact_steps_mover','formation_rms','gate_source','gate_stats')})"
+fi
+if want 5; then
 echo "=== 5. real-sensor deployment over DDS (robots.launch.py + fake robots)"
 W=$REPO/src/ros2_swarm_transport/worlds
 for s in 1 2 3; do
@@ -32,9 +49,11 @@ for s in 1 2 3; do
   L=$!
   timeout 600 python3 "$REPO/tools/ros_fake_robots.py" --ros-args -p seed:=$s -p traffic_phase:=true \
       -p world_sdf:=$W/swarm_world_dynamic.sdf -p contract:=$W/dynamic_obstacles.json \
-      -p kin:=false -p sigma:=0.02 -p out:=$OUT/real_sensor_s$s 2>&1 | grep -E "^\[INFO\].*\{" | tail -1
-  kill -INT $L; wait $L 2>/dev/null
+      -p kin:=false -p sigma:=0.02 -p gate_source:=sensor -p out:=$OUT/real_sensor_s$s 2>&1 | grep -E "^\[INFO\].*\{" | tail -1
+  stop_launch $L
 done
+fi
+if want 6; then
 echo "=== 6. watchdog: robot1's lidar stops publishing at t = 20 s"
 ros2 launch ros2_swarm_transport robots.launch.py world_sdf:=$W/swarm_world_dynamic.sdf \
     contract:=$W/dynamic_obstacles.json seed:=1 kin:=false > $OUT/watchdog_launch.log 2>&1 &
@@ -42,6 +61,7 @@ L=$!
 timeout 300 python3 "$REPO/tools/ros_fake_robots.py" --ros-args -p seed:=1 -p kin:=false \
     -p world_sdf:=$W/swarm_world_dynamic.sdf -p contract:=$W/dynamic_obstacles.json \
     -p drop_after:=20.0 -p out:=$OUT/watchdog 2>&1 | grep -E "^\[INFO\].*\{" | tail -1
-kill -INT $L; wait $L 2>/dev/null
+stop_launch $L
 grep -h "watchdog" $OUT/watchdog_launch.log | head -2
+fi
 echo "=== DONE"

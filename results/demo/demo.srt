@@ -1,0 +1,63 @@
+1
+00:00:00,000 --> 00:00:17,879
+This video walks through the cooperative payload transport project. A team of robots carries one rigid load through a warehouse with moving traffic. We built a replicated benchmark of local steering laws, and a new hybrid algorithm called P A V F H, which puts a small neural network inside a classical planner.
+
+2
+00:00:18,379 --> 00:00:34,484
+Four differential drive robots form up around a load, pick it up, and carry it to the goal. The formation has to steer as one rigid body, while shuttles cross its path and never give way. We test eight warehouse layouts, from thirty by twenty metres up to eighty by fifty.
+
+3
+00:00:34,984 --> 00:00:54,825
+Step one was replication. We found a defect in the reference collision test, where one box edge was never checked, and corrected it. With the fix, the MATLAB and Python implementations agree step for step at zero noise, to less than a micrometre, and in 221 of 221 cells of the noisy grid.
+
+4
+00:00:55,325 --> 00:01:07,127
+Step two: every run now randomises when each shuttle starts, so no planner benefits from a lucky timetable. All results carry ninety five percent intervals, and every failed run is counted.
+
+5
+00:01:07,627 --> 00:01:34,658
+Here is the proposed algorithm. The robots' own scans are filtered beam by beam. A small circular convolutional network then reads the last three scans, their uncertainty, and the formation's own motion, and predicts how dangerous each direction will be over the next half second. The classical histogram picks a free valley, and the safety gate still checks every single move. The network has about eleven thousand parameters and runs in a fraction of a millisecond.
+
+6
+00:01:35,158 --> 00:02:01,287
+This signal plot shows the danger map over a whole mission. On top, the oracle that knows the future. In the middle, the network, which only sees noisy scans. At the bottom, the analytic kernel. The network agrees with the oracle on blocked or free in 98.2 percent of sectors, slightly better than the analytic kernel, and misses fewer blocked sectors. It does over-predict for the first seconds, before it has three frames of history.
+
+7
+00:02:01,787 --> 00:02:25,706
+Does the network help? In the ablation, P A V F H completed 90 of 90 missions, the most of the five planners, and halved the steps the safety gate rejected compared with the same pipeline without the network. The paired intervals still include no effect, so we report this as a consistent but not yet significant gain. It needs about a third of M P C's compute, but M P C is faster on average.
+
+8
+00:02:26,206 --> 00:02:38,238
+Across eight layouts and teams of three to nine robots, P A V F H is among the most reliable laws and the cheapest to compute. No planner gets through the narrow aisle layout, which we report as an open case.
+
+9
+00:02:38,738 --> 00:02:55,503
+Step five separates two things. The ground truth gate is a screening device that only a simulator has. The sensor monitor uses only the robots' scans. Every gate check is plotted here: the monitor stays below the truth, so it is conservative, and false accepts are rare.
+
+10
+00:02:56,003 --> 00:03:10,575
+Now physics. In MuJoCo, with wheel slip and tracking lag, the histogram planners first grazed the racks: P A V F H was clean in only 0 of 30 runs. The cause was that they steer to the smallest clearance the kinematic gate allows.
+
+11
+00:03:11,075 --> 00:03:34,977
+This signal plot shows the fix. Red is P A V F H without a margin, touching the racks. Blue is the same mission with a ten centimetre physical safety margin in the gate, applied equally to every planner. With it, P A V F H was clean in 16 of 30 physics runs, up from 0. The remaining failures are the towed load, which swings outside the formation and defeats every planner, M P C included.
+
+12
+00:03:35,477 --> 00:03:49,405
+We then changed the robots: lighter and heavier chassis, slower and faster wheels, low friction, half and double payload, and weaker motors, while the planner keeps its nominal model. These bars count the clean runs for each planner.
+
+13
+00:03:49,905 --> 00:04:06,313
+Then ROS 2. We ran the physics plant and the controller as two ROS 2 Humble processes talking over D D S. The mission is identical to the in-process run, with a maximum difference of 0 metres over 1010 steps, for M P C, the DAgger network, and P A V F H.
+
+14
+00:04:06,813 --> 00:04:27,304
+In deployment mode, the controller receives only laser scans and odometry over ROS 2, exactly as on real robots. Commands arrive every hundred milliseconds. It completed 3 of 3 missions without touching a rack. When one robot's lidar was cut mid mission, the watchdog stopped every robot within about six tenths of a second.
+
+15
+00:04:27,804 --> 00:04:46,250
+What we do not claim. Everything is simulated. The sensor pipeline still fails when range noise exceeds about five centimetres, so we specify a lidar accurate to a few centimetres. Shuttles never yield, and there are no people in the scenes. The learned parts carry no guarantee: the safety gate decides every move.
+
+16
+00:04:46,750 --> 00:04:57,840
+Every number in this video is read from the result files. The run guide lists every command to reproduce them, and the release archive carries a checksum for every file. Thank you for watching.

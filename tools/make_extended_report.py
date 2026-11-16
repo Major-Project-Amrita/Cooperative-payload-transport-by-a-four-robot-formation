@@ -579,7 +579,13 @@ def r8():
               "MuJoCo, AWS-style warehouse, motion limits on, random traffic phase. "
               f"{len(S)} completed simulations, {len(failed)} that raised an exception. A run "
               "*succeeds* if the load reaches the goal with no static contact and no mover "
-              "contact in the physics engine.", ""])
+              "contact in the physics engine.", "",
+              "Batches:", "",
+              "- **P1**: 6 laws x 3 payload modes x 10 seeds.",
+              "- **P2**: a robot-parameter sweep, one factor at a time.",
+              "- **P3 = P1 and P4 = P2** with a 0.10 m physical safety margin in the gate "
+              "(`gate_margin`), the same for every law. It absorbs the tracking error "
+              "that the kinematic gate does not model.", ""])
     S["ok"] = S.reached_goal & (S.contact_steps_static == 0) & (S.contact_steps_mover == 0)
     rows = []
     for (tag, a, p), x in S.groupby(["tag", "algo", "payload"]):

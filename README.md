@@ -24,7 +24,11 @@ Start here:
 
 | File | What it is |
 |---|---|
+| [docs/RUN_GUIDE.md](docs/RUN_GUIDE.md) | **start here**: every command to reproduce every result, with timings |
+| [results/demo/demo.mp4](results/demo/demo.mp4) | 5-minute narrated demo video (captions: `demo.srt`) |
 | [docs/PAPER_FRAMING.md](docs/PAPER_FRAMING.md) | title, abstract, contributions and what the study does not claim |
+| [docs/SIGNALS.md](docs/SIGNALS.md) | signal plots, one per claim (S1–S6) |
+| [docs/ROS2_VALIDATION.md](docs/ROS2_VALIDATION.md) | ROS 2 Humble validation over DDS, deployment mode, watchdog, readiness for hardware |
 | [docs/PA_VFH.md](docs/PA_VFH.md) | the proposed hybrid algorithm and how it is evaluated |
 | [docs/EXTENDED_RESULTS.md](docs/EXTENDED_RESULTS.md) | generated results of the extended benchmark (`python3 tools/make_extended_report.py`) |
 | [docs/NEURAL.md](docs/NEURAL.md) | survey of neural methods for multi-robot transport, gaps, learned components |
@@ -38,11 +42,13 @@ Start here:
 Quick check (2 min):
 
 ```bash
-cd ~/ros2_ws/src/ros2_swarm_transport && python3 -m pytest test -q
+cd src/ros2_swarm_transport && python3 -m pytest test -q
 ```
 
+Full ROS 2 Humble validation (a Humble machine, or Docker; see the run guide §6):
+
 ```bash
-cd ~/ros2_ws && bash tools/ros_lockstep_test.sh mpc on_top
+source /opt/ros/humble/setup.bash && bash tools/ros_humble_full.sh
 ```
 
 All results are simulated. `bundle/` and `backup_preaudit/` are frozen

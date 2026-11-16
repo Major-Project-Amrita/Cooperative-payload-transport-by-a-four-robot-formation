@@ -11,20 +11,23 @@
 | 5. Separate ground-truth screening from a deployable monitor | **Done** | Audit, sensor and learned-conformal monitors (R5). ROS 2 real-sensor mode from LaserScans (`ROS2_VALIDATION.md`). Claim limits are in `PAPER_FRAMING.md`. |
 | 6. Release with archive and DOI; revised title and abstract | **Archive built; DOI pending** | Run `python3 tools/make_release.py --version 1.0.0` to get `dist/*.tar.gz` and `MANIFEST.sha256`. Minting the DOI needs the authors, a LICENSE file and the Zenodo switch (`RELEASE.md`). Title and abstract: `PAPER_FRAMING.md`, `CITATION.cff`. |
 | Neural networks | **Done** | PA-VFH, the proposed algorithm (learned occupancy inside VFH+; ablation in R9); DAgger policy; conformal learned monitor (`NEURAL.md`, `PA_VFH.md`). |
-| ROS 2 | **Node code verified; real-DDS run of the neural laws pending** | `ROS2_VALIDATION.md`. On a Humble machine, run `bash tools/ros_humble_validation.sh`. |
+| ROS 2 | **Done on real ROS 2 Humble (Docker, DDS)** | 74 tests pass. Lockstep is identical in 7 of 7 cases (MPC, NN, PA-VFH, monitors). Real-sensor deployment: 3/3 reached. Watchdog verified: stop 0.6 s after a lidar failure (`ROS2_VALIDATION.md` §1b). |
+| Physics margin (PA-VFH) | **Done, with limits** | A 0.10 m margin for every law. PA-VFH clean runs: 0/20 → 16/20 with a carried load, 0/40 → 22/40 in the robot sweep. The towed load is still open (`PA_VFH.md` §4). |
+| Signal plots | **Done** | `SIGNALS.md`, S1–S6 |
+| Run guide, demo video | **Done** | `RUN_GUIDE.md`; `results/demo/demo.mp4` |
 
 ## Open before submission
 
 - Authors, affiliation, ORCIDs, and the expansion of "PA" in PA-VFH.
 - LICENSE file (MIT is declared in `package.xml`).
-- The real-ROS 2 run of the neural laws (`tools/ros_humble_validation.sh`).
 
 ## Open before hardware
 
 See `ROS2_VALIDATION.md` §4:
-- noise robustness above σ0 = 0.05 m;
-- the physics clearance margin of PA-VFH;
-- an emergency-stop watchdog;
+- sensor noise must be ≤ 0.05 m;
+- a planner model of the towed load;
+- robustness to robot-model mismatch (PA-VFH 22/40 vs MPC 39/40);
+- a hardware emergency stop;
 - localisation;
 - people.
 

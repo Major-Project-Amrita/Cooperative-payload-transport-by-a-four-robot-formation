@@ -41,9 +41,12 @@ include no effect, so the learned component is a consistent but not yet
 significant improvement. PA-VFH had the highest reach of the five laws
 compared, at about a third of MPC's compute. MPC remained about 15 s faster,
 and a variant that sees the movers' planned trajectories had fewer than half
-as many contact runs. In MuJoCo physics, PA-VFH reached the goal in every
-run but grazed static racks in all of them, as the other histogram laws did;
-MPC and the learned DAgger policy were clean in 22 of 30 and 26 of 30 runs.
+as many contact runs. In MuJoCo physics the histogram laws first grazed
+static racks; a 0.10 m physical safety margin applied to every law made
+PA-VFH clean in 16 of 20 runs with a carried load (0 of 20 without),
+while MPC and the learned DAgger policy remained more robust to robot-model
+mismatch. The ROS 2 Humble package reproduces the in-process missions
+exactly over DDS and drives from the robots' own laser scans.
 All results are simulated; we state the limits of
 transfer to hardware.
 

@@ -354,8 +354,9 @@ def script(N):
                   say=f"This signal plot shows the fix. Red is P A V F H without a margin, touching "
                       f"the racks. Blue is the same mission with a ten centimetre physical safety "
                       f"margin in the gate, applied equally to every planner. With it, P A V F H "
-                      f"was clean in {p3('pavfh')[0]} of {p3('pavfh')[1]} physics runs, and M P C in "
-                      f"{p3('mpc')[0]} of {p3('mpc')[1]}."))
+                      f"was clean in {p3('pavfh')[0]} of {p3('pavfh')[1]} physics runs, up from "
+                      f"{p1('pavfh')[0]}. The remaining failures are the towed load, which swings "
+                      f"outside the formation and defeats every planner, M P C included."))
     if N["P4"]:
         S.append(dict(kind="bars", kicker="Robot-parameter sweep with the margin (P4)",
                       title="Clean physics runs under model mismatch",
@@ -379,9 +380,10 @@ def script(N):
         S.append(dict(kind="still", kicker="ROS 2 deployment mode", title="Driving from the robots' own lidar",
                       image=F("results/figures_signals/S6_ros2_deployment_signals.png"),
                       say=f"In deployment mode, the controller receives only laser scans and "
-                          f"odometry over ROS 2, exactly as on real robots. It completed {k} of "
-                          f"{len(rr)} missions. When one robot's lidar was cut mid mission, the "
-                          f"watchdog stopped every robot and raised the safety flag."
+                          f"odometry over ROS 2, exactly as on real robots. Commands arrive every "
+                          f"hundred milliseconds. It completed {k} of {len(rr)} missions without "
+                          f"touching a rack. When one robot's lidar was cut mid mission, the "
+                          f"watchdog stopped every robot within about six tenths of a second."
                           if wd.get("all_stopped_at") is not None else
                           f"In deployment mode, the controller receives only laser scans and "
                           f"odometry over ROS 2, exactly as on real robots. It completed {k} of "

@@ -174,10 +174,21 @@ How to read this:
   clearance the kinematic gate admits. With wheel slip and tracking lag in
   physics, that clearance is used up. MPC and the DAgger policy keep a
   larger margin.
-- **This is the largest open problem for PA-VFH.** Two directions:
-  - a physics-aware clearance margin, by enlarging the swept radius by the
-    measured tracking error;
-  - training the occupancy network on physics rollouts.
+- **Fixed in part by a physical safety margin.** The fix is a 0.10 m
+  margin in the gate, applied to every law equally (batches P3 and P4,
+  [SIGNALS.md](SIGNALS.md) S1).
+
+  | Batch | PA-VFH clean runs, no margin → 0.10 m margin | MPC, same |
+  |---|---|---|
+  | P1/P3, load virtual or carried on top | 0/20 → **16/20** | 20/20 → 20/20 |
+  | P1/P3, load towed behind | 0/10 → 0/10 | 2/10 → 2/10 |
+  | P2/P4, robot-parameter sweep | 0/40 → **22/40** | 39/40 → 39/40 |
+
+- **What still fails.** Under model mismatch (heavier chassis, slower
+  wheels, low friction) PA-VFH still trails MPC and the DAgger policy
+  (38/40). The towed load fails for every law, because the planner does not
+  model a load that swings outside the formation. Training the occupancy
+  network on physics rollouts remains open.
 
 ## 5. Limits
 
