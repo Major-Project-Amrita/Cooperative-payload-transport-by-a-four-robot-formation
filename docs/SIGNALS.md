@@ -81,8 +81,9 @@ What it shows:
   frames of history then. Warm-starting the history during docking is the
   obvious fix and is not yet done.
 
-This matches the mission-level ablation (E19, R9): a consistent but small
-improvement that is not statistically significant.
+This matches the mission-level result: in the pre-registered E20 the network
+makes missions about 1 % faster (significant) and is otherwise neutral
+(R11).
 
 ## S4. The deployable sensor monitor against ground truth
 

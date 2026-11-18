@@ -56,11 +56,12 @@ replicate the physics study in MuJoCo through ROS~2 Humble, where all
 deployment stack, driven only by the robots' laser scans, completes
 \RtwoClean{} of \RtwoN{} real-time missions without contact. \pavfh{} keeps a
 classical VFH+ decision layer and learns only a small circular CNN that
-predicts per-sector danger 0.5\,s ahead from the robots' own scans. It
-completed \EnnReach{} of \EnnN{} ablation missions and halved the gate
-rejections of its non-learned twin---a consistent but not statistically
-significant gain---with the highest reach of the five laws compared at a third
-of MPC's compute; MPC remained faster and more robust to robot-model mismatch.
+predicts per-sector danger 0.5\,s ahead from the robots' own scans. In a
+pre-registered confirmation on \EzeroN{} fresh paired missions, the network
+shortened missions by about 1\,s (1\,\%; 95\,\% CI 0.3--1.7\,s) relative to its
+non-learned twin, with no measurable change in gate rejections, contacts or
+reach. \pavfh{} had the highest reach of the five laws compared at a third of
+MPC's compute; MPC remained faster and more robust to robot-model mismatch.
 All results are simulated.
 \end{abstract}
 
@@ -115,7 +116,8 @@ gate (simulator only), a geometric scan monitor and a learned monitor with a
 split-conformal margin, each scored for false accepts.
 \item \textbf{\pavfh{}}, a hybrid that learns only the occupancy prediction
 inside an auditable VFH+ pipeline, from the robots' own scans, evaluated against
-its own non-learned ablation; and a team-size-agnostic DAgger policy as the
+its own non-learned ablation in an exploratory and a pre-registered confirmatory
+experiment; and a team-size-agnostic DAgger policy as the
 end-to-end learned baseline.
 \item \textbf{A path to deployment}: a ROS~2 package that reproduces the
 MuJoCo missions exactly over DDS, drives real-time physics from laser scans,
@@ -438,9 +440,18 @@ baselines lacked.
 \subsection{Does the Network Help \pavfh{}?}
 Table~\ref{tab:e19} compares \pavfh{} with its non-learned twin (same pipeline,
 analytic kernel), with PA-VFH-K (which reads the contract), and with MPC and
-MPPI. Paired on identical missions, the network completed one more mission and
-reduced gate rejections by about half, but every paired interval includes or
-touches zero. At the signal level (Fig.~\ref{fig:s3}) the network agrees with
+MPPI. In E19 (90 pairs) the network completed one more mission and appeared to
+halve gate rejections, but every paired interval included or touched zero. We
+therefore ran a confirmatory experiment, E20, whose design and analysis were
+fixed and committed before any run: \EzeroN{} new paired missions (seeds 7--30;
+same worlds and noise levels; no retraining or tuning). Table~\ref{tab:e20}
+gives the result. Mission time is \emph{improved}: \EzeroTime\,s per mission,
+about 1\,\%, and the pooled 450-pair estimate agrees (\EpoolTime\,s). Gate
+rejections (\EzeroRej) and contact steps (\EzeroCon) are inconclusive, and reach
+is identical (\EzeroReachNN{} vs.\ \EzeroReachNo{}): the E19 reduction in
+rejections came from a few long stalls and did not replicate. The network
+therefore makes \pavfh{} slightly but measurably faster and is otherwise
+neutral. At the signal level (Fig.~\ref{fig:s3}) the network agrees with
 the oracle on blocked/free sectors slightly more often than the analytic kernel
 (98.2\,\% vs.\ 98.0\,\%) and misses fewer blocked sectors, while its mean value
 error is larger because it hedges on free sectors; it also over-predicts danger
@@ -456,6 +467,15 @@ seeds; random phase). Top: pooled per law. Bottom: paired differences.}
 \label{tab:e19}
 \adjustbox{max width=\columnwidth}{\input{tables/e19.tex}}\\[2mm]
 \adjustbox{max width=\columnwidth}{\input{tables/e19_paired.tex}}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{E20, pre-registered confirmation: paired difference \pavfh{} $-$
+\pavfh{} (no NN) on identical missions; 95\,\% bootstrap intervals (10{,}000
+resamples). ``Improved'': interval entirely below zero.}
+\label{tab:e20}
+\adjustbox{max width=\columnwidth}{\input{tables/e20.tex}}
 \end{table}
 
 \begin{figure}[t]
@@ -522,9 +542,12 @@ process: centroid paths coincide; difference 0\,m at every step.}
 
 % =====================================================================
 \section{Discussion}
-\textit{Where learning pays.} The learned occupancy model gives a small,
-consistent, non-significant gain; its practical value is that \pavfh{} no longer
-needs the traffic plan and still has the highest reach. The strongest learned
+\textit{Where learning pays.} In a pre-registered test the learned occupancy
+model gives a small but significant speed-up (about 1\,\%) and is otherwise
+neutral; its practical value is that \pavfh{} no longer needs the traffic plan
+and still has the highest reach. The apparent reduction in gate rejections in
+the smaller E19 sample did not replicate---a reminder that ablations of learned
+components need confirmatory runs. The strongest learned
 result is the DAgger policy, which matches its MPC teacher at about 2.5$\times$
 less compute and is among the most robust in physics.
 

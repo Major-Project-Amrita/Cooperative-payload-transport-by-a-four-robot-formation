@@ -395,12 +395,11 @@ def script(N):
                   caption=f"Gate rejections per run: PA-VFH {N['e19_pavfh_rej']:.0f}, without the network "
                           f"{N['e19_pavfh_nonn_rej']:.0f}. Compute: PA-VFH {N['e19_pavfh_ms']:.2f} ms vs "
                           f"MPC {N['e19_mpc_ms']:.2f} ms per step.",
-                  say=f"Does the network help? In the ablation, PA-VFH completed {pv('pavfh')} "
-                      f"missions, the most of the five planners, and halved the steps the safety "
-                      f"gate rejected compared with the same pipeline without the network. The paired "
-                      f"intervals still include no effect, so we report this as a consistent but not "
-                      f"yet significant gain. It needs about a third of MPC's compute, but MPC is "
-                      f"faster on average."))
+                  say=f"Does the network help? PA-VFH completed {pv('pavfh')} missions, the most "
+                      f"of the five planners, at about a third of MPC's compute; MPC is faster on "
+                      f"average. A pre-registered test on 360 fresh paired missions found the network "
+                      f"makes missions about 1 s (1 %) faster, a significant but small gain, with no "
+                      f"measurable effect on gate rejections, contacts or reach."))
     S.append(dict(kind="still", kicker="Benchmark", title="Larger warehouses and team sizes",
                   image=F("results/figures_ext/fig_e15_reach.png"),
                   say="Across eight layouts and teams of three to nine robots, PA-VFH is among "

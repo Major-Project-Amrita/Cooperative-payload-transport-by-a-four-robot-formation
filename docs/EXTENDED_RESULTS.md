@@ -1357,6 +1357,28 @@ Paired PA-VFH minus PA-VFH (no NN) on 90 common (world, noise, seed) missions (c
 
 A negative difference favours the network. An interval that contains 0 means no measurable effect at this sample size.
 
+## R11. E20: pre-registered confirmation of the network effect
+
+Plan fixed before running: [PREREGISTRATION_E20.md](PREREGISTRATION_E20.md). 720 runs (0 raised an exception). Paired difference = PA-VFH minus PA-VFH (no NN), same (world, noise, seed). Decision rule: *improved* if the whole 95 % interval is below 0, *worsened* if above, else *inconclusive*.
+
+**E20 alone (confirmatory, seeds 7-30)**: 360 pairs.
+
+| outcome | role | pairs | mean_diff | ci95 | verdict |
+|---|---|---|---|---|---|
+| rejected steps | primary | 360 | +0.12 | [-2.71, +3.00] | inconclusive |
+| mission time (s), both reached | primary | 351 | -0.97 | [-1.66, -0.33] | **improved** |
+| contact steps | secondary | 360 | +0.17 | [-0.93, +1.19] | inconclusive |
+| reach (discordant pairs) | secondary | 360 | NN only 0 / no-NN only 0 | reached 351 vs 351 | -- |
+
+**E19 + E20 pooled (secondary, seeds 1-30)**: 450 pairs.
+
+| outcome | role | pairs | mean_diff | ci95 | verdict |
+|---|---|---|---|---|---|
+| rejected steps | primary | 450 | -3.77 | [-12.95, +1.76] | inconclusive |
+| mission time (s), both reached | primary | 440 | -0.95 | [-1.53, -0.38] | **improved** |
+| contact steps | secondary | 450 | +0.07 | [-0.84, +0.95] | inconclusive |
+| reach (discordant pairs) | secondary | 450 | NN only 1 / no-NN only 0 | reached 441 vs 440 | -- |
+
 ## R10. MuJoCo physics validation through ROS 2 (Humble, DDS)
 
 Run with `tools/run_ros2_physics.py` inside ROS 2 Humble (the official `ros:humble-ros-base` image). Each job uses its own DDS domain.

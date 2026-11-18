@@ -58,12 +58,16 @@ analytic danger kernel. Everything after it stays classical and auditable:
 | Measure | With the network | Without (the identical pipeline with the analytic kernel) |
 |---|---|---|
 | Missions completed (E19, 90 paired missions) | 90 / 90 | 89 / 90 |
-| Gate-rejected steps per mission | about half: −19 [−58, +1] paired | – |
+| **Mission time, pre-registered E20 (360 new pairs)** | **−0.97 s [−1.66, −0.33]: significantly faster (≈ 1 %)** | – |
+| Gate-rejected steps, E20 | +0.12 [−2.71, +3.00]: no effect (E19's "about half" did not replicate) | – |
+| Contact steps, E20 | +0.17 [−0.93, +1.19]: no effect | – |
 | Blocked/free agreement with the oracle (S3) | 98.2 % | 98.0 % |
 | Blocked sectors missed | 8.0 % | 8.3 % |
 
-These gains are **consistent but not statistically significant** at this
-sample size. The network also has a start-up transient before it has three
+In the pre-registered confirmation (E20, plan in PREREGISTRATION_E20.md)
+the network makes missions **significantly but only slightly faster** (about
+1 s, 1 %) and is **otherwise neutral**: no measurable change in rejections,
+contacts or reach. The network also has a start-up transient before it has three
 scans of history (S3). PA-VFH as a whole had the highest reach of the five
 laws in E19 and the cheapest compute. MPC is faster on average.
 

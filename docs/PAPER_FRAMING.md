@@ -79,10 +79,11 @@ network adds.
 >
 > PA-VFH keeps a classical VFH+ decision layer and learns only one block: a
 > circular CNN that predicts per-sector danger 0.5 s ahead from the robots'
-> own scans. It completed 90 of 90 ablation missions and halved the
-> collision-gate rejections of its non-learned twin. The gain is consistent
-> but not statistically significant. It also had the highest reach of the
-> five laws compared, at a third of MPC's compute; MPC remained faster. In
+> own scans. In a pre-registered confirmation on 360 fresh paired missions,
+> the network shortened missions by about 1 s (1 %; 95 % CI 0.3–1.7 s) with
+> no measurable change in gate rejections, contacts or reach. PA-VFH had the
+> highest reach of the five laws compared, at a third of MPC's compute; MPC
+> remained faster. In
 > physics, a 0.10 m clearance margin applied to every law removed most
 > histogram-planner contacts (PA-VFH: 0/20 → 16/20 clean runs). MPC stayed
 > more robust to robot-model mismatch.
@@ -227,7 +228,7 @@ success.
 | D | Scale, layout, team size | E15, E16 heatmaps | Narrow aisles, and a large payload in a corridor narrower than its swept diameter, are open problems. PA-VFH is tied highest in reach on both E15 (69/80) and E16 (138/150) |
 | E | What does deployable safety cost? | E17, fig_e17_monitor, S4 | The sensor monitor holds reach at low noise and fails at σ0 = 0.10. The learned monitor holds reach but admits more |
 | F | Is the comparison fair? | E18 tuning | Tuning changes held-out cost little except for FGM and DWA. The defaults were not a straw man |
-| G | Does the network help PA-VFH? | E19 (R9), S3 | A consistent but not significant gain. The highest reach of five laws, at a third of MPC's compute |
+| G | Does the network help PA-VFH? | E19 (R9), E20 (R11, pre-registered), S3 | Significantly but slightly faster (about 1 %), otherwise neutral; E19's apparent rejection gain did not replicate. The highest reach of five laws, at a third of MPC's compute |
 | H | Does it survive physics? | P1–P4, S1, S2 | Contacts hidden by kinematics appear. A 0.10 m margin fixes most for PA-VFH; MPC is more robust to model mismatch. Towed loads defeat all laws |
 | I | Does it run in ROS 2, with physics? | ROS2_VALIDATION §1b–1c, R10, S5 | MuJoCo through ROS 2 lockstep: 90/90 runs identical to in-process. Full deployment stack in real-time MuJoCo (scans over DDS): 9/10 clean. Watchdog in physics: stop 0.3 s after a lidar failure |
 
@@ -300,7 +301,7 @@ Copy and keep: [§7 below](#7-what-the-paper-does-not-claim).
 - **Learned components carry no guarantee.** The occupancy network and the
   DAgger policy change where the formation wants to go. The gate commits
   every pose.
-- **The network's gain is not statistically significant** (E19 paired
+- **The network's gain is small**: significant only for mission time (about 1 %, pre-registered E20); no effect on rejections, contacts or reach (E19 paired
   intervals include 0).
 - **Movers are constant-velocity shuttles that never yield.** No people
   appear in any scene.
@@ -317,7 +318,7 @@ Copy and keep: [§7 below](#7-what-the-paper-does-not-claim).
 | A defect was found and corrected | Non-cyclic corner order; one box normal never tested | DOCUMENTATION §5.3; `matlab_ref/formation_clearance_dyn.m` |
 | Phase randomisation roughly doubles contacts | MPC 61/320 → 151/320 runs | EXTENDED_RESULTS R2 |
 | Twelve laws, 3–9 robots, 8 layouts up to 80 × 50 m | – | `tools/run_extended.py` (E15, E16) |
-| PA-VFH 90/90; gate rejections halved; not significant | 90 vs 89; −19.3 [−57.9, +0.7] | R9 |
+| Network: about 1 s faster, otherwise neutral (pre-registered) | E20: time −0.97 [−1.66, −0.33] s; rejections +0.12 [−2.71, +3.00] | R11, PREREGISTRATION_E20.md |
 | Highest reach of five, a third of MPC's compute | 0.77 vs 2.46 ms per step | R9 |
 | MPC faster | 74.7 vs 90.3 s | R9 |
 | Margin: PA-VFH 0/20 → 16/20 clean | P1 vs P3, virtual and on-top modes | R8; `results/mujoco_phase/` |

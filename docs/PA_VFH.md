@@ -123,14 +123,27 @@ phase. None raised an exception. Numbers come from
 - **Rejected steps:** −19.3 [−57.9, +0.7].
 - **Contact steps:** −0.3 [−1.8, +1.1].
 
-**What this supports:**
+**What this supports (E19, exploratory):**
 - The learned occupancy model points in the right direction on every
   measure. It finished the one mission the analytic kernel did not, and it
   halved the number of steps the gate rejected.
 - **No effect is statistically significant at this sample size.** Every
   paired interval contains or touches 0. The rejected-step gain comes mostly
   from a few long stalls of the analytic version at σ0 = 0.02.
-- We therefore do not claim that the network makes PA-VFH safer or faster.
+
+**Confirmed by the pre-registered E20** (360 new pairs, seeds 7–30; plan in
+[PREREGISTRATION_E20.md](PREREGISTRATION_E20.md), report section R11):
+
+| Outcome (NN − no NN) | E20 | Pooled E19 + E20 (450 pairs) |
+|---|---|---|
+| Mission time (s) | **−0.97 [−1.66, −0.33]: improved** | −0.95 [−1.53, −0.38]: improved |
+| Rejected steps | +0.12 [−2.71, +3.00]: inconclusive | −3.77 [−12.95, +1.76]: inconclusive |
+| Contact steps | +0.17 [−0.93, +1.19]: inconclusive | +0.07 [−0.84, +0.95]: inconclusive |
+| Reach | 351 vs 351 | 441 vs 440 |
+
+So the network makes PA-VFH **slightly but significantly faster** (about
+1 s, 1 %) and is otherwise neutral. **E19's halved rejections did not
+replicate**; they came from a few long stalls.
 - PA-VFH has the highest reach of the five laws. It uses no contract
   prediction and about a third of MPC's compute.
 - **PA-VFH is not the best on every measure.** MPC is about 15 s faster.

@@ -226,8 +226,46 @@ def t_layouts():
                          "lrrrr", r"\scriptsize"))
 
 
+def t_e20():
+    p20 = os.path.join(RES, "extended", "E20.csv")
+    if not os.path.exists(p20):
+        return
+    e20 = pd.read_csv(p20)
+    e19 = pd.read_csv(os.path.join(RES, "extended", "E19.csv"))
+
+    def paired(d):
+        A = d[d.algo == "pavfh"].set_index(["world", "sigma0", "seed"])
+        B = d[d.algo == "pavfh_nonn"].set_index(["world", "sigma0", "seed"])
+        c = A.index.intersection(B.index)
+        return A.loc[c], B.loc[c]
+
+    def b10k(x):
+        x = np.asarray(x, float)
+        r = np.random.default_rng(2026)
+        m = np.array([x[r.integers(0, len(x), len(x))].mean() for _ in range(10000)])
+        return x.mean(), np.percentile(m, 2.5), np.percentile(m, 97.5)
+
+    rows = []
+    for lab, d, key in (("E20 (confirmatory)", e20, "Ezero"),
+                        ("E19+E20 pooled", pd.concat([e19[e19.algo.isin(["pavfh", "pavfh_nonn"])], e20]), "Epool")):
+        A, B = paired(d)
+        both = (A.reached == 1) & (B.reached == 1)
+        for name, x, tag in (("Rejected steps", (A.n_reject - B.n_reject).values, "Rej"),
+                             ("Time (s), both reached", (A.total_time - B.total_time)[both].values, "Time"),
+                             ("Contact steps", (A.collisions - B.collisions).values, "Con")):
+            m, lo, hi = b10k(x)
+            v = "improved" if hi < 0 else ("worsened" if lo > 0 else "inconclusive")
+            rows.append((lab if tag == "Rej" else "", name, len(x), f"{m:+.2f} [{lo:+.2f}, {hi:+.2f}]", v))
+            mac(f"{key}{tag}", f"{m:+.2f}~[{lo:+.2f},~{hi:+.2f}]")
+            mac(f"{key}{tag}V", v)
+        mac(f"{key}N", f"{len(A)}")
+        mac(f"{key}ReachNN", f"{int(A.reached.sum())}"); mac(f"{key}ReachNo", f"{int(B.reached.sum())}")
+    write("e20", tab(["Set", "Paired outcome (NN $-$ no NN)", "Pairs", "Mean [95\\,\\% CI]", "Verdict"],
+                     rows, "lllll", r"\scriptsize"))
+
+
 def main():
-    for f in (t_laws, t_replication, t_phase, t_e19, t_monitors, t_physics, t_layouts):
+    for f in (t_laws, t_replication, t_phase, t_e19, t_e20, t_monitors, t_physics, t_layouts):
         f()
     with open(os.path.join(ROOT, "docs", "paper", "numbers.tex"), "w") as fh:
         for k, v in MAC.items():

@@ -12,6 +12,7 @@ Sections (each skipped if its input does not exist yet):
   R7  learned components (DAgger policy, conformal monitor)
   R8  physics: P1 replication and P2 robot-parameter sweep, every run listed
   R9  E19 PA-VFH ablation: does the neural occupancy model help?
+  R11 E20 pre-registered confirmation of the PA-VFH network effect
   R10 MuJoCo physics through ROS 2 (lockstep vs in-process; free-running with real sensors)
 Intervals: reach and event rates with Wilson 95 %; means with a 2,000-sample
 percentile bootstrap 95 %.
@@ -568,6 +569,61 @@ def r9():
         L.append("")
 
 
+def _paired(d):
+    A = d[d.algo == "pavfh"].set_index(["world", "sigma0", "seed"])
+    B = d[d.algo == "pavfh_nonn"].set_index(["world", "sigma0", "seed"])
+    c = A.index.intersection(B.index)
+    return A.loc[c], B.loc[c]
+
+
+def _boot10k(x):
+    """Pre-registered statistic: mean, 95 % percentile bootstrap, 10,000 resamples, seed 2026."""
+    x = np.asarray(x, float)
+    r = np.random.default_rng(2026)
+    m = np.array([x[r.integers(0, len(x), len(x))].mean() for _ in range(10000)])
+    return x.mean(), np.percentile(m, 2.5), np.percentile(m, 97.5)
+
+
+def _verdict(lo, hi):
+    return "**improved**" if hi < 0 else ("**worsened**" if lo > 0 else "inconclusive")
+
+
+def r11():
+    p20 = os.path.join(RES, "extended", "E20.csv")
+    if not os.path.exists(p20):
+        return
+    e20 = pd.read_csv(p20)
+    e19 = pd.read_csv(os.path.join(RES, "extended", "E19.csv"))
+    L.extend(["## R11. E20: pre-registered confirmation of the network effect", "",
+              "Plan fixed before running: [PREREGISTRATION_E20.md](PREREGISTRATION_E20.md). "
+              f"{len(e20)} runs ({int((e20.error.notna() & (e20.error != '')).sum()) if 'error' in e20 else 0} "
+              "raised an exception). Paired difference = PA-VFH minus PA-VFH (no NN), "
+              "same (world, noise, seed). Decision rule: *improved* if the whole 95 % interval "
+              "is below 0, *worsened* if above, else *inconclusive*.", ""])
+    for lab, d in (("E20 alone (confirmatory, seeds 7-30)", e20),
+                   ("E19 + E20 pooled (secondary, seeds 1-30)",
+                    pd.concat([e19[e19.algo.isin(["pavfh", "pavfh_nonn"])], e20]))):
+        A, B = _paired(d)
+        both = (A.reached == 1) & (B.reached == 1)
+        rows = []
+        for name, x, prim in (("rejected steps", (A.n_reject - B.n_reject).values, "primary"),
+                              ("mission time (s), both reached",
+                               (A.total_time - B.total_time)[both].values, "primary"),
+                              ("contact steps", (A.collisions - B.collisions).values, "secondary")):
+            m, lo, hi = _boot10k(x)
+            rows.append(dict(outcome=name, role=prim, pairs=len(x),
+                             mean_diff=f"{m:+.2f}", ci95=f"[{lo:+.2f}, {hi:+.2f}]",
+                             verdict=_verdict(lo, hi)))
+        only_nn = int(((A.reached == 1) & (B.reached == 0)).sum())
+        only_no = int(((A.reached == 0) & (B.reached == 1)).sum())
+        rows.append(dict(outcome="reach (discordant pairs)", role="secondary", pairs=len(A),
+                         mean_diff=f"NN only {only_nn} / no-NN only {only_no}",
+                         ci95=f"reached {int(A.reached.sum())} vs {int(B.reached.sum())}",
+                         verdict="--"))
+        L.extend([f"**{lab}**: {len(A)} pairs.", ""])
+        L.extend(tbl(rows, ["outcome", "role", "pairs", "mean_diff", "ci95", "verdict"]))
+
+
 def r10():
     base = os.path.join(RES, "ros_physics")
     R1 = [json.load(open(f)) for f in sorted(glob.glob(os.path.join(base, "R1", "*.row.json")))]
@@ -684,7 +740,7 @@ def r8():
 
 
 if __name__ == "__main__":
-    for fn in (r1, r2, r3, r4, r5, r6, r7, r8, r9, r10):
+    for fn in (r1, r2, r3, r4, r5, r6, r7, r8, r9, r11, r10):
         try:
             fn()
         except Exception as e:                   # noqa: BLE001
