@@ -105,6 +105,12 @@ def build(exp):
                 for t in (0, 1):
                     for s in range(1, 6):
                         J.append(job(exp, w, a, s, sigma0=0.05, tuned=t))
+    elif exp == "E20":                 # pre-registered confirmation of E19 (docs/PREREGISTRATION_E20.md)
+        for w in ("dynamic", "awswh", "wh_m_racks", "rand08", "maze"):
+            for a in ("pavfh", "pavfh_nonn"):
+                for sg in (0.02, 0.10, 0.20):
+                    for s in range(7, 31):
+                        J.append(job(exp, w, a, s, sigma0=sg))
     elif exp == "E19":
         for w in ("dynamic", "awswh", "wh_m_racks", "rand08", "maze"):
             for a in ("pavfh", "pavfh_nonn", "pvfh_prob", "mpc", "mppi"):
